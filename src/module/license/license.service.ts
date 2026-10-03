@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { ValidateLicenseInput, RevokeLicenseInput, License, PaginatedLicenses, LicenseStats, LicenseQuery, LicenseValidationResult } from "./license.type";
-
-const prisma = new PrismaClient();
 
 export class LicenseService {
   async getAllLicenses(query: LicenseQuery): Promise<PaginatedLicenses> {
