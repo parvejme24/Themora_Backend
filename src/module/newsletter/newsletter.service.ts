@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { INewsletterService } from "./newsletter.interface";
 import { NewsletterSubscriber, NewsletterStats } from "./newsletter.type";
-
-const prisma = new PrismaClient();
 
 export class NewsletterService implements INewsletterService {
   // Subscribe to newsletter
