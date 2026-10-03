@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import crypto from "crypto";
 import { env } from "../../config/env";
 import { LemonSqueezyWebhookPayload, WebhookProcessingResult } from "./webhook.type";
-
-const prisma = new PrismaClient();
 
 export class WebhookService {
   verifyWebhookSignature(payload: Buffer, signature: string): boolean {
@@ -140,11 +138,121 @@ export class WebhookService {
     }
   }
 
+  verifyFastSpringSignature(payload: Buffer, signature: string): boolean {
+    const secret = process.env.FASTSPRING_WEBHOOK_SECRET;
+    if (!secret || !signature) return true; // If no secret configured, accept
+    try {
+      const expected = crypto.createHmac("sha256", secret).update(payload).digest("base64");
+      return expected === signature;
+    } catch {
+      return false;
+    }
+  }
+
+  async processFastSpringWebhook(body: any): Promise<WebhookProcessingResult> {
+    try {
+      const events = Array.isArray(body?.events) ? body.events : [body];
+      for (const event of events) {
+        if (event.type === "order.completed" || event.type === "order.updated") {
+          const data = event.data;
+          const orderId = data.order || data.reference || `FS-${Date.now()}`;
+          const customerEmail = (data.customer?.email || "").trim().toLowerCase();
+          const customerName = `${data.customer?.first || ""} ${data.customer?.last || ""}`.trim() || "Customer";
+          const productId = data.tags?.product_id;
+          const productType = data.tags?.product_type || "template";
+          const userId = data.tags?.user_id || null;
+
+          let template = null;
+          let pricingPlan = null;
+
+          if (productId) {
+            if (productType === "template") {
+              template = await prisma.template.findUnique({ where: { id: productId } });
+            } else {
+              pricingPlan = await prisma.pricingPlan.findUnique({ where: { id: productId } });
+            }
+          }
+
+          const totalAmount = Number(data.total) || (template?.price ?? pricingPlan?.price ?? 0);
+
+          const existing = await prisma.orderInvoice.findFirst({ where: { lemonsqueezyOrderId: orderId } });
+          const order = existing
+            ? await prisma.orderInvoice.update({
+                where: { id: existing.id },
+                data: { status: "COMPLETED", customerEmail, customerName },
+              })
+            : await prisma.orderInvoice.create({
+                data: {
+                  userId,
+                  templateId: template?.id,
+                  pricingPlanId: pricingPlan?.id,
+                  lemonsqueezyOrderId: orderId,
+                  lemonsqueezyInvoiceId: `INV-${orderId}`,
+                  status: "COMPLETED",
+                  totalAmount,
+                  currency: data.currency || "USD",
+                  licenseType: "SINGLE",
+                  paymentMethod: "FastSpring",
+                  customerEmail,
+                  customerName,
+                  billingAddress: { email: customerEmail, name: customerName },
+                  downloadLinks: template?.sourceFiles?.map((_: any, idx: number) => String(idx)) || [],
+                },
+              });
+
+          if (template) {
+            let license = await prisma.license.findFirst({ where: { orderId: order.id } });
+            if (!license) {
+              await prisma.license.create({
+                data: {
+                  orderId: order.id,
+                  templateId: template.id,
+                  userId,
+                  licenseType: "SINGLE",
+                  licenseKey: this.generateLicenseKey(),
+                  lemonsqueezyOrderId: orderId,
+                  isActive: true,
+                  maxUsage: 1,
+                  activationLimit: 1,
+                  usedCount: 0,
+                },
+              });
+              await prisma.template.update({
+                where: { id: template.id },
+                data: { totalPurchase: { increment: 1 }, downloads: { increment: 1 } },
+              }).catch(() => {});
+            }
+          } else if (pricingPlan) {
+            const supportExpiresAt = new Date();
+            supportExpiresAt.setFullYear(supportExpiresAt.getFullYear() + 1);
+            await prisma.planEntitlement.upsert({
+              where: { orderId: order.id },
+              create: {
+                pricingPlanId: pricingPlan.id,
+                orderId: order.id,
+                userId,
+                customerEmail,
+                websitesAllowed: pricingPlan.websiteLimit,
+                supportExpiresAt,
+                isActive: true,
+              },
+              update: { isActive: true },
+            });
+          }
+        }
+      }
+      return { success: true, message: "FastSpring webhook processed successfully" };
+    } catch (error) {
+      console.error("FastSpring webhook error:", error);
+      return { success: false, message: "Failed to process FastSpring webhook", error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
   private determineLicenseType(variantName: string): "SINGLE" | "EXTENDED" {
     return /extended|commercial/i.test(variantName) ? "EXTENDED" : "SINGLE";
   }
 
   private generateLicenseKey(): string {
-    return `TF-${crypto.randomUUID().toUpperCase()}`;
+    return `THMR-${crypto.randomBytes(2).toString("hex").toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
   }
 }
