@@ -10,7 +10,10 @@ import {
   sessionValidationSchema,
   logoutSchema,
   verifyOtpSchema,
-  resendOtpSchema
+  resendOtpSchema,
+  requestPasswordResetSchema,
+  verifyPasswordResetOtpSchema,
+  resetPasswordWithOtpSchema
 } from "./auth.type";
 
 // Validate user registration
@@ -18,7 +21,7 @@ export const validateRegisterUser = (req: Request, res: Response, next: NextFunc
   try {
     const validatedData = registerUserSchema.parse(req.body);
     req.body = validatedData;
-    next();
+    return next();
     return;
   } catch (error: any) {
     return res.status(400).json({
@@ -34,7 +37,7 @@ export const validateLoginUser = (req: Request, res: Response, next: NextFunctio
   try {
     const validatedData = loginUserSchema.parse(req.body);
     req.body = validatedData;
-    next();
+    return next();
     return;
   } catch (error: any) {
     return res.status(400).json({
@@ -50,7 +53,7 @@ export const validateGoogleLogin = (req: Request, res: Response, next: NextFunct
   try {
     const validatedData = googleLoginSchema.parse(req.body);
     req.body = validatedData;
-    next();
+    return next();
     return;
   } catch (error: any) {
     return res.status(400).json({
@@ -188,5 +191,32 @@ export const validateResendOtp = (req: Request, res: Response, next: NextFunctio
       message: "Validation failed",
       error: error.errors || error.message,
     });
+  }
+};
+
+export const validateRequestPasswordReset = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    req.body = requestPasswordResetSchema.parse(req.body);
+    return next();
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: "Invalid email address", error: error.errors || error.message });
+  }
+};
+
+export const validatePasswordResetOtp = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    req.body = verifyPasswordResetOtpSchema.parse(req.body);
+    return next();
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: "Invalid reset code details", error: error.errors || error.message });
+  }
+};
+
+export const validateResetPasswordWithOtp = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    req.body = resetPasswordWithOtpSchema.parse(req.body);
+    return next();
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: "Invalid password reset details", error: error.errors || error.message });
   }
 };
