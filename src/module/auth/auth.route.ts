@@ -5,6 +5,9 @@ import {
   googleLogin,
   verifyOtp,
   resendOtp,
+  requestPasswordReset,
+  verifyPasswordResetOtp,
+  resetPasswordWithOtp,
   validateSession,
   logoutUser,
   changePassword,
@@ -27,6 +30,9 @@ import {
   validateGoogleLogin,
   validateVerifyOtp,
   validateResendOtp,
+  validateRequestPasswordReset,
+  validatePasswordResetOtp,
+  validateResetPasswordWithOtp,
   validateChangePassword,
   validateUpdateProfile,
   validateUserQuery,
@@ -47,6 +53,9 @@ const router = Router();
 router.post("/auth/register", validateRegisterUser, registerUser);
 router.post("/auth/verify-otp", validateVerifyOtp, verifyOtp);
 router.post("/auth/resend-otp", validateResendOtp, resendOtp);
+router.post("/auth/password-reset/request", validateRequestPasswordReset, requestPasswordReset);
+router.post("/auth/password-reset/verify", validatePasswordResetOtp, verifyPasswordResetOtp);
+router.post("/auth/password-reset/confirm", validateResetPasswordWithOtp, resetPasswordWithOtp);
 router.post("/auth/login", validateLoginUser, loginUser);
 router.post("/auth/google-login", validateGoogleLogin, googleLogin);
 router.post("/auth/validate-session", validateSessionValidation, validateSession);
