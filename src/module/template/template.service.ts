@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { ITemplateService } from "./template.interface";
 import { CreateTemplateInput, UpdateTemplateInput, Template, PaginatedTemplates, TemplateStats, TemplateQuery } from "./template.type";
-
-const prisma = new PrismaClient();
 
 export class TemplateService implements ITemplateService {
   async getAllTemplates(query: TemplateQuery): Promise<PaginatedTemplates> {
