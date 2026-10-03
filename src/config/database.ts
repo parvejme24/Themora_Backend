@@ -2,16 +2,25 @@ import { PrismaClient } from '@prisma/client';
 import { env } from './env';
 
 const prisma = new PrismaClient({
-  log: env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  log: ['warn', 'error'],
 });
 
 export const connectDatabase = async (): Promise<void> => {
-  try {
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    process.exit(1);
+  let attempts = 0;
+  const maxAttempts = 3;
+  while (attempts < maxAttempts) {
+    try {
+      attempts++;
+      await prisma.$connect();
+      console.log('✅ Database connected successfully');
+      return;
+    } catch (error) {
+      console.error(`❌ Database connection attempt ${attempts} failed:`, error);
+      if (attempts >= maxAttempts) {
+        process.exit(1);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 };
 
