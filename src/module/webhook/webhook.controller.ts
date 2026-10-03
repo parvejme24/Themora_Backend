@@ -73,6 +73,28 @@ export const handleLemonSqueezyWebhook = async (req: Request, res: Response) => 
   }
 };
 
+// FastSpring webhook handler
+export const handleFastSpringWebhook = async (req: Request, res: Response) => {
+  try {
+    const signature = (req.headers["x-fs-signature"] || req.headers["x-signature"]) as string;
+    const rawPayload = (req as any).rawBody as Buffer | undefined;
+
+    if (rawPayload && signature && !webhookService.verifyFastSpringSignature(rawPayload, signature)) {
+      console.warn("FastSpring webhook signature mismatch");
+    }
+
+    const result = await webhookService.processFastSpringWebhook(req.body);
+    if (result.success) {
+      return res.status(200).json({ success: true, message: result.message });
+    } else {
+      return res.status(400).json({ success: false, message: result.message, error: result.error });
+    }
+  } catch (error: any) {
+    console.error("Error processing FastSpring webhook:", error);
+    return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
 // Test webhook endpoint (for development)
 export const testWebhook = async (req: Request, res: Response) => {
   try {
@@ -90,3 +112,4 @@ export const testWebhook = async (req: Request, res: Response) => {
     });
   }
 };
+
