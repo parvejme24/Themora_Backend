@@ -1,4 +1,5 @@
-import { PrismaClient, OtpPurpose } from "@prisma/client";
+import { OtpPurpose } from "@prisma/client";
+import { prisma } from "../../config/database";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import {
@@ -14,10 +15,9 @@ import {
   IUserStats,
   IVerifyOtp,
   IResendOtp,
+  IResetPasswordWithOtp,
 } from "./auth.interface";
 import { sendOtpEmail } from "../../utils/email";
-
-const prisma = new PrismaClient();
 
 class AuthService {
   // Generate NextAuth secret
@@ -89,11 +89,16 @@ class AuthService {
         },
       });
 
-      // Send OTP email (best-effort)
+      // Send OTP email
       try {
         await sendOtpEmail(user.email, otp);
       } catch (err) {
         console.error("Failed to send OTP email:", err);
+        return {
+          success: false,
+          message: "Account created, but verification email could not be sent. Please request a new code.",
+          error: "Email delivery failed",
+        };
       }
 
       return {
@@ -450,11 +455,7 @@ class AuthService {
         data: { otpCode: otp, otpPurpose: "REGISTRATION" as any, otpExpiresAt },
       });
 
-      try {
-        await sendOtpEmail(user.email, otp);
-      } catch (err) {
-        console.error("Failed to send OTP email:", err);
-      }
+      await sendOtpEmail(user.email, otp);
 
       return { success: true, message: "OTP resent successfully" };
     } catch (error) {
@@ -464,6 +465,82 @@ class AuthService {
         message: "Failed to resend OTP",
         error: error instanceof Error ? error.message : "Unknown error",
       };
+    }
+  }
+
+  public async requestPasswordReset(email: string): Promise<IAuthResponse> {
+    const genericMessage = "If an account exists for that email, a password reset code has been sent.";
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      if (!user || !user.password || user.isBanned || user.isTrashed || user.isDeletedPermanently) {
+        return { success: true, message: genericMessage };
+      }
+
+      const otp = crypto.randomInt(100000, 1000000).toString();
+      const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { otpCode: otp, otpPurpose: OtpPurpose.PASSWORD_RESET, otpExpiresAt },
+      });
+
+      try {
+        await sendOtpEmail(user.email, otp, "password reset");
+      } catch (error) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { otpCode: null, otpPurpose: null, otpExpiresAt: null },
+        });
+        console.error("Failed to send password reset email:", error);
+        return { success: false, message: "Unable to send the reset code. Please try again later.", error: "Email delivery failed" };
+      }
+
+      return { success: true, message: genericMessage };
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      return { success: false, message: "Unable to process the password reset request", error: "Password reset failed" };
+    }
+  }
+
+  public async verifyPasswordResetOtp(data: IVerifyOtp): Promise<IAuthResponse> {
+    try {
+      const user = await prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
+      if (!user || user.otpPurpose !== OtpPurpose.PASSWORD_RESET || !user.otpCode || !user.otpExpiresAt || user.otpExpiresAt < new Date() || user.otpCode !== data.otp) {
+        return { success: false, message: "The reset code is invalid or expired", error: "Invalid reset code" };
+      }
+      return { success: true, message: "Reset code verified" };
+    } catch (error) {
+      console.error("Error verifying password reset code:", error);
+      return { success: false, message: "Unable to verify the reset code", error: "Reset verification failed" };
+    }
+  }
+
+  public async resetPasswordWithOtp(data: IResetPasswordWithOtp): Promise<IAuthResponse> {
+    const verification = await this.verifyPasswordResetOtp(data);
+    if (!verification.success) return verification;
+
+    try {
+      const normalizedEmail = data.email.trim().toLowerCase();
+      const user = await prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } });
+      if (!user) return { success: false, message: "The reset code is invalid or expired", error: "Invalid reset code" };
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: await bcrypt.hash(data.newPassword, 12),
+          otpCode: null,
+          otpPurpose: null,
+          otpExpiresAt: null,
+          otpVerified: true,
+          nextAuthSecret: null,
+          nextAuthExpiresAt: null,
+          isLoggedIn: false,
+        },
+      });
+      return { success: true, message: "Password reset successfully" };
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      return { success: false, message: "Unable to reset the password", error: "Password reset failed" };
     }
   }
 
