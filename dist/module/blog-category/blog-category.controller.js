@@ -62,7 +62,7 @@ const createBlogCategory = async (req, res) => {
             title = req.body?.title;
             slug = req.body?.slug;
             if (req.file) {
-                const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(req.file, "techfynite/blog-categories");
+                const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(req.file, "themora/blog-categories");
                 imageUrl = uploaded.url;
             }
         }
@@ -126,7 +126,7 @@ const updateBlogCategory = async (req, res) => {
         const slug = req.body?.slug;
         let imageUrl;
         if (req.file) {
-            const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(req.file, "techfynite/blog-categories");
+            const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(req.file, "themora/blog-categories");
             imageUrl = uploaded.url;
         }
         const categoryData = {};

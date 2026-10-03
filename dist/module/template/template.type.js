@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.templateQuerySchema = exports.templateIdSchema = exports.updateTemplateSchema = exports.createTemplateSchema = void 0;
+exports.newArrivalsQuerySchema = exports.templateQuerySchema = exports.templateIdSchema = exports.updateTemplateSchema = exports.createTemplateSchema = void 0;
 const zod_1 = require("zod");
 exports.createTemplateSchema = zod_1.z.object({
     title: zod_1.z.string().min(1, "Title is required").max(200, "Title must not exceed 200 characters"),
@@ -57,6 +57,7 @@ exports.createTemplateSchema = zod_1.z.object({
         return num;
     }).pipe(zod_1.z.number().int().positive("Pages must be positive")).default(1),
     categoryId: zod_1.z.string().uuid("Invalid category ID"),
+    categoryName: zod_1.z.string().optional(),
     checkoutUrl: zod_1.z.string().url().optional(),
 });
 exports.updateTemplateSchema = exports.createTemplateSchema.partial();
@@ -72,5 +73,8 @@ exports.templateQuerySchema = zod_1.z.object({
     sortOrder: zod_1.z.enum(["asc", "desc"]).default("desc"),
     minPrice: zod_1.z.string().transform(Number).pipe(zod_1.z.number().positive()).optional(),
     maxPrice: zod_1.z.string().transform(Number).pipe(zod_1.z.number().positive()).optional(),
+});
+exports.newArrivalsQuerySchema = zod_1.z.object({
+    limit: zod_1.z.string().transform(Number).pipe(zod_1.z.number().int().positive().max(50)).default(20),
 });
 //# sourceMappingURL=template.type.js.map

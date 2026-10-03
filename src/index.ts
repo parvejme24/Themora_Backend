@@ -1,12 +1,13 @@
 import app from './app';
 import { connectDatabase } from './config/database';
+import { env } from './config/env';
 
-const PORT = process.env.PORT || 5050;
+const PORT = env.PORT;
 
 const startServer = async (): Promise<void> => {
   try {
-    console.log('🚀 Starting TechFynite Backend Server...');
-    console.log('📋 Environment:', process.env.NODE_ENV || 'development');
+    console.log('🚀 Starting Themora Backend Server...');
+    console.log('📋 Environment:', env.NODE_ENV);
     
     // Connect to database
     console.log('🔌 Connecting to database...');
@@ -18,7 +19,7 @@ const startServer = async (): Promise<void> => {
       console.log('🎉 Server started successfully!');
       console.log('='.repeat(50));
       console.log(`🌐 Server URL: http://localhost:${PORT}`);
-      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`📝 Environment: ${env.NODE_ENV}`);
       console.log(`⏰ Started at: ${new Date().toISOString()}`);
       console.log('='.repeat(50));
     });
@@ -41,6 +42,6 @@ process.on('SIGTERM', async () => {
 });
 
 // Only start server if not in Vercel environment
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+if (env.NODE_ENV !== 'production' || !env.VERCEL) {
   startServer();
 }

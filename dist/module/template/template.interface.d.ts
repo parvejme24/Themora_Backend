@@ -8,6 +8,7 @@ export interface ITemplateService {
         success: boolean;
         message: string;
     }>;
+    getNewArrivals(limit?: number): Promise<Template[]>;
     getTemplateStats(): Promise<TemplateStats>;
 }
 //# sourceMappingURL=template.interface.d.ts.map

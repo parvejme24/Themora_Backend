@@ -8,42 +8,51 @@ import blogReviewRoutes from "../module/blog-review/blog-review.route";
 import templateCategoryRoutes from "../module/template-category/template-category.route";
 import templateRoutes from "../module/template/template.route";
 import orderRoutes from "../module/order/order.route";
+import pricingRoutes from "../module/pricing/pricing.route";
+import paymentRoutes from "../module/payment/payment.route";
 import licenseRoutes from "../module/license/license.route";
 import webhookRoutes from "../module/webhook/webhook.route";
 
 const router = Router();
+const apiV1Router = Router();
 
 // Auth routes
-router.use("/api/v1", authRoutes);
+apiV1Router.use(authRoutes);
 
 // Newsletter routes
-router.use("/api/v1", newsletterRoutes);
+apiV1Router.use(newsletterRoutes);
 
 // Contact routes
-router.use("/api/v1", contactRoutes);
+apiV1Router.use(contactRoutes);
 
 // Blog category routes
-router.use("/api/v1", blogCategoryRoutes);
+apiV1Router.use(blogCategoryRoutes);
 
 // Blog routes
-router.use("/api/v1", blogRoutes);
+apiV1Router.use(blogRoutes);
 
 // Blog review routes
-router.use("/api/v1", blogReviewRoutes);
+apiV1Router.use(blogReviewRoutes);
 
 // Template category routes
-router.use("/api/v1", templateCategoryRoutes);
+apiV1Router.use(templateCategoryRoutes);
 
 // Template routes
-router.use("/api/v1", templateRoutes);
+apiV1Router.use(templateRoutes);
 
 // Order routes
-router.use("/api/v1", orderRoutes);
+apiV1Router.use(orderRoutes);
+
+// Pricing and payment routes
+apiV1Router.use(pricingRoutes);
+apiV1Router.use(paymentRoutes);
 
 // License routes
-router.use("/api/v1", licenseRoutes);
+apiV1Router.use(licenseRoutes);
 
 // Webhook routes
-router.use("/api/v1", webhookRoutes);
+apiV1Router.use(webhookRoutes);
+
+router.use("/api/v1", apiV1Router);
 
 export default router;

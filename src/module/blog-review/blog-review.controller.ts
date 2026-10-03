@@ -6,18 +6,22 @@ import { IBlogReviewQuery } from "./blog-review.interface";
 export const createBlogReview = async (req: Request, res: Response) => {
   try {
     const { blogId } = req.params;
-    const reviewData = { ...req.body, blogId };
+    const user = (req as any).user;
+    const reviewData = {
+      ...req.body,
+      blogId,
+      userId: user.id,
+      fullName: user.fullName,
+      email: user.email,
+    };
 
-    // Check if user has already reviewed this blog (only if userId is provided)
-    if (reviewData.userId) {
-      const hasReviewed = await blogReviewService.hasUserReviewed(blogId, reviewData.userId);
-      if (hasReviewed) {
-        return res.status(400).json({
-          success: false,
-          message: "You have already reviewed this blog",
-          error: "Duplicate review not allowed"
-        });
-      }
+    const hasReviewed = await blogReviewService.hasUserReviewed(blogId, user.id);
+    if (hasReviewed) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already reviewed this blog",
+        error: "Duplicate review not allowed"
+      });
     }
 
     const review = await blogReviewService.createBlogReview(reviewData);

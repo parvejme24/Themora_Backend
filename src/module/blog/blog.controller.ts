@@ -6,7 +6,11 @@ import { IBlogQuery } from "./blog.interface";
 // Get all blogs
 export const getAllBlogs = async (req: Request, res: Response) => {
   try {
-    const query: IBlogQuery = (req as any).validatedQuery || req.query;
+    const user = (req as any).user;
+    const query: IBlogQuery = {
+      ...((req as any).validatedQuery || req.query),
+      ...(user?.role === "ADMIN" ? {} : { isPublished: true }),
+    };
     const result = await blogService.getAllBlogs(query);
     
     return res.status(200).json({
@@ -40,6 +44,10 @@ export const getBlogById = async (req: Request, res: Response) => {
         message: "Blog not found",
         data: null,
       });
+    }
+
+    if (!blog.isPublished && (req as any).user?.role !== "ADMIN" && blog.authorId !== (req as any).user?.id) {
+      return res.status(404).json({ success: false, message: "Blog not found", data: null });
     }
     
     // Increment view count only if user is logged in
@@ -108,7 +116,7 @@ export const addBlog = async (req: Request, res: Response) => {
       // Upload main image if provided
       if (mainImageFile) {
         try {
-          const uploadedMain = await uploadBufferToCloudinary(mainImageFile, "techfynite/blogs");
+          const uploadedMain = await uploadBufferToCloudinary(mainImageFile, "themora/blogs");
           blogData.featuredImageUrl = uploadedMain.url;
           console.log("✅ Featured image uploaded successfully:", uploadedMain.url);
         } catch (error) {
@@ -124,7 +132,7 @@ export const addBlog = async (req: Request, res: Response) => {
       // Upload additional images if provided
       if (additionalImageFiles.length > 0) {
         try {
-          const uploaded = await uploadBuffersToCloudinary(additionalImageFiles, "techfynite/blogs");
+          const uploaded = await uploadBuffersToCloudinary(additionalImageFiles, "themora/blogs");
           blogData.screenshots = uploaded.map((u: { url: string; publicId: string }) => u.url);
           console.log("✅ Additional images uploaded successfully:", uploaded.length);
         } catch (error) {
@@ -164,6 +172,10 @@ export const addBlog = async (req: Request, res: Response) => {
       }
     }
     
+    const user = (req as any).user;
+    blogData.authorId = user.id;
+    if (user.role !== "ADMIN") blogData.isPublished = false;
+
     const blog = await blogService.createBlog(blogData);
     
     return res.status(201).json({
@@ -185,6 +197,12 @@ export const addBlog = async (req: Request, res: Response) => {
 export const updateBlog = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    const existingBlog = await blogService.getBlogById(id);
+    if (!existingBlog) return res.status(404).json({ success: false, message: "Blog not found", data: null });
+    if (user.role !== "ADMIN" && existingBlog.authorId !== user.id) {
+      return res.status(403).json({ success: false, message: "You can only update your own blog posts" });
+    }
     
     // Handle both JSON and form-data
     let updateData = { ...req.body };
@@ -199,7 +217,7 @@ export const updateBlog = async (req: Request, res: Response) => {
 
       if (mainImageFile) {
         try {
-          const uploadedMain = await uploadBufferToCloudinary(mainImageFile, "techfynite/blogs");
+          const uploadedMain = await uploadBufferToCloudinary(mainImageFile, "themora/blogs");
           updateData.featuredImageUrl = uploadedMain.url;
           console.log("✅ Featured image uploaded successfully:", uploadedMain.url);
         } catch (error) {
@@ -213,7 +231,7 @@ export const updateBlog = async (req: Request, res: Response) => {
       }
       if (additionalImageFiles.length > 0) {
         try {
-          const uploaded = await uploadBuffersToCloudinary(additionalImageFiles, "techfynite/blogs");
+          const uploaded = await uploadBuffersToCloudinary(additionalImageFiles, "themora/blogs");
           updateData.screenshots = uploaded.map((u: { url: string; publicId: string }) => u.url);
           console.log("✅ Additional images uploaded successfully:", uploaded.length);
         } catch (error) {
@@ -252,6 +270,8 @@ export const updateBlog = async (req: Request, res: Response) => {
         updateData.isPublished = updateData.isPublished === 'true';
       }
     }
+
+    if (user.role !== "ADMIN") updateData.isPublished = false;
     
     const blog = await blogService.updateBlog(id, updateData);
     
@@ -282,6 +302,12 @@ export const updateBlog = async (req: Request, res: Response) => {
 export const deleteBlog = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    const blog = await blogService.getBlogById(id);
+    if (!blog) return res.status(404).json({ success: false, message: "Blog not found", data: null });
+    if (user.role !== "ADMIN" && blog.authorId !== user.id) {
+      return res.status(403).json({ success: false, message: "You can only delete your own blog posts" });
+    }
     
     const deleted = await blogService.deleteBlog(id);
     
@@ -312,7 +338,11 @@ export const deleteBlog = async (req: Request, res: Response) => {
 export const getBlogsByCategory = async (req: Request, res: Response) => {
   try {
     const { categoryId } = req.params;
-    const query: IBlogQuery = (req as any).validatedQuery || req.query;
+    const user = (req as any).user;
+    const query: IBlogQuery = {
+      ...((req as any).validatedQuery || req.query),
+      ...(user?.role === "ADMIN" ? {} : { isPublished: true }),
+    };
     
     const result = await blogService.getBlogsByCategory(categoryId, query);
     
@@ -336,7 +366,12 @@ export const getBlogsByCategory = async (req: Request, res: Response) => {
 export const getBlogsByAuthor = async (req: Request, res: Response) => {
   try {
     const { authorId } = req.params;
-    const query: IBlogQuery = (req as any).validatedQuery || req.query;
+    const user = (req as any).user;
+    const canViewDrafts = user?.role === "ADMIN" || user?.id === authorId;
+    const query: IBlogQuery = {
+      ...((req as any).validatedQuery || req.query),
+      ...(canViewDrafts ? {} : { isPublished: true }),
+    };
     
     const result = await blogService.getBlogsByAuthor(authorId, query);
     
@@ -380,7 +415,7 @@ export const getBlogStats = async (req: Request, res: Response) => {
 export const toggleBlogLike = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
+    const userId = (req as any).user?.id;
     
     if (!userId) {
       return res.status(400).json({
@@ -484,7 +519,8 @@ export const getDraftBlogs = async (req: Request, res: Response) => {
 export const addBlogReaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { userId, reactionType } = req.body;
+    const userId = (req as any).user?.id;
+    const { reactionType } = req.body;
     
     if (!userId) {
       return res.status(400).json({
@@ -537,7 +573,7 @@ export const getBlogReactions = async (req: Request, res: Response) => {
 export const getUserReaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.id || req.query.userId;
+    const userId = (req as any).user?.id;
     
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({

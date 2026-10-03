@@ -11,7 +11,7 @@ class BlogService {
         if (search) {
             where.OR = [
                 { title: { contains: search, mode: 'insensitive' } },
-                { description: { path: '$', string_contains: search } },
+                { description: { contains: search, mode: 'insensitive' } },
             ];
         }
         if (categoryId) {
@@ -37,6 +37,11 @@ class BlogService {
                             id: true,
                             fullName: true,
                             email: true,
+                            profile: {
+                                select: {
+                                    avatarUrl: true,
+                                },
+                            },
                         },
                     },
                     category: {
@@ -50,6 +55,13 @@ class BlogService {
                         select: {
                             id: true,
                             userId: true,
+                        },
+                    },
+                    reactions: {
+                        select: {
+                            id: true,
+                            userId: true,
+                            reactionType: true,
                         },
                     },
                     reviews: {
@@ -84,6 +96,11 @@ class BlogService {
                         id: true,
                         fullName: true,
                         email: true,
+                        profile: {
+                            select: {
+                                avatarUrl: true,
+                            },
+                        },
                     },
                 },
                 category: {
@@ -97,6 +114,14 @@ class BlogService {
                     select: {
                         id: true,
                         userId: true,
+                    },
+                },
+                reactions: {
+                    select: {
+                        id: true,
+                        userId: true,
+                        reactionType: true,
+                        createdAt: true,
                     },
                 },
                 reviews: {
@@ -131,6 +156,11 @@ class BlogService {
                         id: true,
                         fullName: true,
                         email: true,
+                        profile: {
+                            select: {
+                                avatarUrl: true,
+                            },
+                        },
                     },
                 },
                 category: {
@@ -169,6 +199,11 @@ class BlogService {
                         id: true,
                         fullName: true,
                         email: true,
+                        profile: {
+                            select: {
+                                avatarUrl: true,
+                            },
+                        },
                     },
                 },
                 category: {
@@ -217,7 +252,7 @@ class BlogService {
                 _sum: { viewCount: true },
             }),
             prisma.blog.aggregate({
-                _sum: { likes: true },
+                _sum: { reactCount: true },
             }),
             prisma.blog.aggregate({
                 _avg: { readingTime: true },
@@ -236,7 +271,8 @@ class BlogService {
             publishedBlogs,
             draftBlogs,
             totalViews: totalViews._sum.viewCount || 0,
-            totalLikes: totalLikes._sum.likes || 0,
+            totalLikes: totalLikes._sum.reactCount || 0,
+            totalReactions: totalLikes._sum.reactCount || 0,
             averageReadingTime: averageReadingTime._avg.readingTime || 0,
             blogsByCategory: blogsByCategory.map(item => ({
                 categoryId: item.categoryId,
@@ -250,7 +286,10 @@ class BlogService {
             })),
         };
     }
-    async incrementViewCount(id) {
+    async incrementViewCount(id, userId) {
+        if (!userId) {
+            return;
+        }
         await prisma.blog.update({
             where: { id },
             data: {
@@ -278,15 +317,10 @@ class BlogService {
                     },
                 },
             });
-            await prisma.blog.update({
-                where: { id: blogId },
-                data: {
-                    likes: {
-                        decrement: 1,
-                    },
-                },
+            const likeCount = await prisma.blogLike.count({
+                where: { blogId },
             });
-            return { liked: false, likes: await this.getBlogLikesCount(blogId) };
+            return { liked: false, likes: likeCount };
         }
         else {
             await prisma.blogLike.create({
@@ -295,23 +329,142 @@ class BlogService {
                     userId,
                 },
             });
+            const likeCount = await prisma.blogLike.count({
+                where: { blogId },
+            });
+            return { liked: true, likes: likeCount };
+        }
+    }
+    async getBlogLikesCount(blogId) {
+        const count = await prisma.blogLike.count({
+            where: { blogId },
+        });
+        return count;
+    }
+    async addReaction(blogId, userId, reactionType) {
+        const existingReaction = await prisma.blogReaction.findUnique({
+            where: {
+                blogId_userId: {
+                    blogId,
+                    userId,
+                },
+            },
+        });
+        if (existingReaction) {
+            if (existingReaction.reactionType === reactionType) {
+                await prisma.blogReaction.delete({
+                    where: {
+                        blogId_userId: {
+                            blogId,
+                            userId,
+                        },
+                    },
+                });
+                await prisma.blog.update({
+                    where: { id: blogId },
+                    data: {
+                        reactCount: {
+                            decrement: 1,
+                        },
+                    },
+                });
+                const updatedBlog = await prisma.blog.findUnique({
+                    where: { id: blogId },
+                    select: { reactCount: true },
+                });
+                return { reaction: null, reactCount: updatedBlog?.reactCount || 0 };
+            }
+            else {
+                await prisma.blogReaction.update({
+                    where: {
+                        blogId_userId: {
+                            blogId,
+                            userId,
+                        },
+                    },
+                    data: {
+                        reactionType,
+                    },
+                });
+                const updatedBlog = await prisma.blog.findUnique({
+                    where: { id: blogId },
+                    select: { reactCount: true },
+                });
+                const reaction = await prisma.blogReaction.findUnique({
+                    where: {
+                        blogId_userId: {
+                            blogId,
+                            userId,
+                        },
+                    },
+                });
+                return { reaction, reactCount: updatedBlog?.reactCount || 0 };
+            }
+        }
+        else {
+            await prisma.blogReaction.create({
+                data: {
+                    blogId,
+                    userId,
+                    reactionType,
+                },
+            });
             await prisma.blog.update({
                 where: { id: blogId },
                 data: {
-                    likes: {
+                    reactCount: {
                         increment: 1,
                     },
                 },
             });
-            return { liked: true, likes: await this.getBlogLikesCount(blogId) };
+            const updatedBlog = await prisma.blog.findUnique({
+                where: { id: blogId },
+                select: { reactCount: true },
+            });
+            const reaction = await prisma.blogReaction.findUnique({
+                where: {
+                    blogId_userId: {
+                        blogId,
+                        userId,
+                    },
+                },
+            });
+            return { reaction, reactCount: updatedBlog?.reactCount || 0 };
         }
     }
-    async getBlogLikesCount(blogId) {
-        const result = await prisma.blog.findUnique({
-            where: { id: blogId },
-            select: { likes: true },
+    async getBlogReactions(blogId) {
+        const reactions = await prisma.blogReaction.findMany({
+            where: { blogId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        profile: {
+                            select: {
+                                avatarUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
         });
-        return result?.likes || 0;
+        return reactions;
+    }
+    async getUserReaction(blogId, userId) {
+        const reaction = await prisma.blogReaction.findUnique({
+            where: {
+                blogId_userId: {
+                    blogId,
+                    userId,
+                },
+            },
+        });
+        return reaction;
     }
     async updateBlogStatus(id, isPublished) {
         const blog = await prisma.blog.update({
@@ -319,7 +472,16 @@ class BlogService {
             data: { isPublished },
             include: {
                 author: {
-                    select: { id: true, fullName: true, email: true },
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        profile: {
+                            select: {
+                                avatarUrl: true,
+                            },
+                        },
+                    },
                 },
                 category: {
                     select: { id: true, title: true, slug: true },
@@ -337,7 +499,18 @@ class BlogService {
             where: { id },
             data: { isPublished: !existing.isPublished },
             include: {
-                author: { select: { id: true, fullName: true, email: true } },
+                author: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        profile: {
+                            select: {
+                                avatarUrl: true,
+                            },
+                        },
+                    },
+                },
                 category: { select: { id: true, title: true, slug: true } },
             },
         });

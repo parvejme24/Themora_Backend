@@ -7,7 +7,7 @@ import {
   getOrderStats,
   getUserOrders,
 } from './order.controller';
-import { authenticateUser, authenticateAdminAndCheckStatus } from '../../middleware/authMiddleware';
+import { authenticateAndCheckStatus, authenticateAdminAndCheckStatus } from '../../middleware/authMiddleware';
 import {
   validateCreateOrder,
   validateUpdateOrderStatus,
@@ -17,13 +17,13 @@ import {
 
 const router = Router();
 
-// Public routes
-router.get('/orders', validateOrderQuery, getAllOrders);
-router.get('/orders/stats', getOrderStats);
-router.get('/orders/:id', validateOrderId, getOrderById);
+// Admin routes
+router.get('/orders', authenticateAdminAndCheckStatus, validateOrderQuery, getAllOrders);
+router.get('/orders/stats', authenticateAdminAndCheckStatus, getOrderStats);
+router.get('/orders/:id', authenticateAndCheckStatus, validateOrderId, getOrderById);
 
 // User routes
-router.get('/user/orders', authenticateUser, validateOrderQuery, getUserOrders);
+router.get('/user/orders', authenticateAndCheckStatus, validateOrderQuery, getUserOrders);
 
 // Admin routes
 router.post('/orders', authenticateAdminAndCheckStatus, validateCreateOrder, createOrder);

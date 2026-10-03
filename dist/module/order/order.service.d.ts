@@ -5,6 +5,7 @@ export declare class OrderService {
     createOrder(data: CreateOrderInput): Promise<Order>;
     updateOrderStatus(id: string, data: UpdateOrderStatusInput): Promise<Order | null>;
     getOrderStats(): Promise<OrderStats>;
-    getUserOrders(userId: string, query: Omit<OrderQuery, 'userId'>): Promise<PaginatedOrders>;
+    claimGuestOrders(userId: string, email: string): Promise<void>;
+    getUserOrders(userId: string, email: string, query: Omit<OrderQuery, 'userId'>): Promise<PaginatedOrders>;
 }
 //# sourceMappingURL=order.service.d.ts.map

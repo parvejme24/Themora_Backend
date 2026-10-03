@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateTemplateQuery = exports.validateTemplateId = exports.validateUpdateTemplate = exports.validateCreateTemplate = void 0;
+exports.validateNewArrivalsQuery = exports.validateTemplateQuery = exports.validateTemplateId = exports.validateUpdateTemplate = exports.validateCreateTemplate = void 0;
 const template_type_1 = require("./template.type");
 const validateCreateTemplate = (req, res, next) => {
     try {
@@ -62,4 +62,19 @@ const validateTemplateQuery = (req, res, next) => {
     }
 };
 exports.validateTemplateQuery = validateTemplateQuery;
+const validateNewArrivalsQuery = (req, res, next) => {
+    try {
+        const validatedQuery = template_type_1.newArrivalsQuerySchema.parse(req.query);
+        req.validatedQuery = validatedQuery;
+        return next();
+    }
+    catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid query parameters",
+            errors: error.errors || error.message,
+        });
+    }
+};
+exports.validateNewArrivalsQuery = validateNewArrivalsQuery;
 //# sourceMappingURL=template.validate.js.map

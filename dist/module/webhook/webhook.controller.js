@@ -7,8 +7,8 @@ const webhookService = new webhook_service_1.WebhookService();
 const handleLemonSqueezyWebhook = async (req, res) => {
     try {
         const signature = req.headers["x-signature"];
-        const payload = JSON.stringify(req.body);
-        if (!webhookService.verifyWebhookSignature(payload, signature)) {
+        const payload = req.rawBody;
+        if (!payload || !webhookService.verifyWebhookSignature(payload, signature)) {
             console.error("Invalid webhook signature");
             return res.status(401).json({
                 success: false,

@@ -42,7 +42,7 @@ const createTemplateCategory = async (req, res) => {
         if (req.file) {
             try {
                 const { uploadBufferToCloudinary } = await Promise.resolve().then(() => __importStar(require("../../middleware/cloudinary-upload")));
-                const uploadResult = await uploadBufferToCloudinary(req.file, "techfynite/template-categories");
+                const uploadResult = await uploadBufferToCloudinary(req.file, "themora/template-categories");
                 data.image = uploadResult.url;
             }
             catch (uploadError) {
@@ -126,7 +126,7 @@ const updateTemplateCategory = async (req, res) => {
         if (req.file) {
             try {
                 const { uploadBufferToCloudinary } = await Promise.resolve().then(() => __importStar(require("../../middleware/cloudinary-upload")));
-                const uploadResult = await uploadBufferToCloudinary(req.file, "techfynite/template-categories");
+                const uploadResult = await uploadBufferToCloudinary(req.file, "themora/template-categories");
                 data.image = uploadResult.url;
             }
             catch (uploadError) {

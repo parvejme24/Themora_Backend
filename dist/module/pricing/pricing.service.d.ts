@@ -1,1 +1,102 @@
+import { CreatePricingPlanInput, UpdatePricingPlanInput } from "./pricing.interface";
+export declare class PricingService {
+    private ensureDefaultPlans;
+    getActivePlans(): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sortOrder: number;
+        isActive: boolean;
+        title: string;
+        description: string;
+        slug: string;
+        price: number;
+        lemonsqueezyVariantId: string | null;
+        currency: string;
+        recommended: boolean;
+        features: string[];
+        websiteLimit: number | null;
+    }[]>;
+    getAllPlans(): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sortOrder: number;
+        isActive: boolean;
+        title: string;
+        description: string;
+        slug: string;
+        price: number;
+        lemonsqueezyVariantId: string | null;
+        currency: string;
+        recommended: boolean;
+        features: string[];
+        websiteLimit: number | null;
+    }[]>;
+    getPlanById(id: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sortOrder: number;
+        isActive: boolean;
+        title: string;
+        description: string;
+        slug: string;
+        price: number;
+        lemonsqueezyVariantId: string | null;
+        currency: string;
+        recommended: boolean;
+        features: string[];
+        websiteLimit: number | null;
+    } | null>;
+    createPlan(data: CreatePricingPlanInput): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sortOrder: number;
+        isActive: boolean;
+        title: string;
+        description: string;
+        slug: string;
+        price: number;
+        lemonsqueezyVariantId: string | null;
+        currency: string;
+        recommended: boolean;
+        features: string[];
+        websiteLimit: number | null;
+    }>;
+    updatePlan(id: string, data: UpdatePricingPlanInput): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sortOrder: number;
+        isActive: boolean;
+        title: string;
+        description: string;
+        slug: string;
+        price: number;
+        lemonsqueezyVariantId: string | null;
+        currency: string;
+        recommended: boolean;
+        features: string[];
+        websiteLimit: number | null;
+    }>;
+    deactivatePlan(id: string): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        sortOrder: number;
+        isActive: boolean;
+        title: string;
+        description: string;
+        slug: string;
+        price: number;
+        lemonsqueezyVariantId: string | null;
+        currency: string;
+        recommended: boolean;
+        features: string[];
+        websiteLimit: number | null;
+    }>;
+}
+export declare const pricingService: PricingService;
 //# sourceMappingURL=pricing.service.d.ts.map

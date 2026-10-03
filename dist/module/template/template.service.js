@@ -42,6 +42,7 @@ class TemplateService {
                             image: true,
                         },
                     },
+                    links: true,
                 },
             }),
             prisma.template.count({ where }),
@@ -71,6 +72,7 @@ class TemplateService {
                         image: true,
                     },
                 },
+                links: true,
             },
         });
         return template;
@@ -95,6 +97,7 @@ class TemplateService {
                         image: true,
                     },
                 },
+                links: true,
             },
         });
         await prisma.templateCategory.update({
@@ -123,6 +126,7 @@ class TemplateService {
                         image: true,
                     },
                 },
+                links: true,
             },
         });
         if (data.categoryId && data.categoryId !== existingTemplate.categoryId) {
@@ -155,6 +159,26 @@ class TemplateService {
             data: { templateCount: { decrement: 1 } },
         });
         return { success: true, message: "Template deleted successfully" };
+    }
+    async getNewArrivals(limit = 20) {
+        const templates = await prisma.template.findMany({
+            take: limit,
+            orderBy: {
+                createdAt: 'desc',
+            },
+            include: {
+                category: {
+                    select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        image: true,
+                    },
+                },
+                links: true,
+            },
+        });
+        return templates;
     }
     async getTemplateStats() {
         const [totalTemplates, totalDownloads, totalPurchases, averagePrice, categoryStats,] = await Promise.all([

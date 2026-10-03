@@ -4,10 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { xss } from "express-xss-sanitizer";
 import morgan from "morgan";
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
+import { env } from "./config/env";
 
 const app = express();
 
@@ -58,14 +55,9 @@ app.use(limiter);
 // );
 
 const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:5174",
-  "https://tf-f-ts.vercel.app",
-  "https://techfynite.vercel.app",
-  "https://www.techfynite.com",
-  "https://www.techfynite.org",
-];
+  env.FRONTEND_URL,
+  ...env.CORS_ORIGINS.split(",").map((origin) => origin.trim()),
+].filter(Boolean);
 
 app.use(
   cors({
@@ -77,7 +69,14 @@ app.use(
 );
 
 // Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({
+  limit: "10mb",
+  verify: (req, _res, buffer) => {
+    if (req.url?.includes("/webhook/lemonsqueezy")) {
+      (req as any).rawBody = Buffer.from(buffer);
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Import routes
@@ -89,7 +88,7 @@ app.use(routes);
 // Root endpoint
 app.get("/", (req, res) => {
   res.json({
-    message: "TechFynite Backend Server",
+    message: "Themora Backend Server",
     version: "1.0.0",
     status: "running",
   });
@@ -116,7 +115,7 @@ app.use(
     res.status(500).json({
       error: "Internal Server Error",
       message:
-        process.env.NODE_ENV === "development"
+        env.NODE_ENV === "development"
           ? err.message
           : "Something went wrong!",
       timestamp: new Date().toISOString(),

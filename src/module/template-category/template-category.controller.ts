@@ -17,7 +17,7 @@ export const createTemplateCategory = async (req: Request, res: Response) => {
         );
         const uploadResult = await uploadBufferToCloudinary(
           req.file,
-          "techfynite/template-categories"
+          "themora/template-categories"
         );
         data.image = uploadResult.url;
       } catch (uploadError: any) {
@@ -121,7 +121,7 @@ export const updateTemplateCategory = async (req: Request, res: Response) => {
         );
         const uploadResult = await uploadBufferToCloudinary(
           req.file,
-          "techfynite/template-categories"
+          "themora/template-categories"
         );
         data.image = uploadResult.url;
       } catch (uploadError: any) {

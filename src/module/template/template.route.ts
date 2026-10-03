@@ -10,7 +10,7 @@ import {
   downloadSourceFile,
 } from './template.controller';
 import { uploadTemplateImageCloudinary, handleUploadError } from '../../middleware/cloudinary-upload';
-import { authenticateAdminAndCheckStatus } from '../../middleware/authMiddleware';
+import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus, optionalAuth } from '../../middleware/authMiddleware';
 import {
   validateCreateTemplate,
   validateUpdateTemplate,
@@ -22,10 +22,10 @@ import {
 const router = Router();
 
 // Public routes
-router.get('/templates', validateTemplateQuery, getAllTemplates);
-router.get('/templates/new-arrivals', validateNewArrivalsQuery, getNewArrivals);
+router.get('/templates', optionalAuth, validateTemplateQuery, getAllTemplates);
+router.get('/templates/new-arrivals', optionalAuth, validateNewArrivalsQuery, getNewArrivals);
 router.get('/templates/stats', getTemplateStats);
-router.get('/templates/:id', validateTemplateId, getTemplateById);
+router.get('/templates/:id', optionalAuth, validateTemplateId, getTemplateById);
 
 // Admin routes
 router.post('/templates', authenticateAdminAndCheckStatus, (req: any, res: any, next: any) => {
@@ -57,6 +57,6 @@ router.put('/templates/:id', authenticateAdminAndCheckStatus, validateTemplateId
 router.delete('/templates/:id', authenticateAdminAndCheckStatus, validateTemplateId, deleteTemplate);
 
 // Download source file route
-router.get('/templates/:templateId/download/:fileIndex', downloadSourceFile);
+router.get('/templates/:templateId/download/:fileIndex', authenticateAndCheckStatus, downloadSourceFile);
 
 export default router;

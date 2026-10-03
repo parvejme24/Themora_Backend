@@ -28,7 +28,7 @@ router.get("/blog-reviews/:blogId", optionalAuth, validateBlogIdParam, getReview
 router.get("/blog-reviews/review/:reviewId", optionalAuth, validateBlogReviewId, getBlogReviewById);
 
 // User routes (authentication required)
-router.post("/blog-reviews/:blogId", validateBlogIdParam, validateCreateBlogReview, createBlogReview);
+router.post("/blog-reviews/:blogId", authenticateAndCheckStatus, validateBlogIdParam, validateCreateBlogReview, createBlogReview);
 router.put("/blog-reviews/:reviewId", authenticateAndCheckStatus, validateBlogReviewId, validateUpdateBlogReview, updateBlogReview);
 router.delete("/blog-reviews/:reviewId", authenticateAndCheckStatus, validateBlogReviewId, deleteBlogReview);
 

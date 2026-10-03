@@ -22,6 +22,7 @@ export declare const createTemplateSchema: z.ZodObject<{
     version: z.ZodDefault<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>, z.ZodTransform<number, string | number>>, z.ZodNumber>>;
     pages: z.ZodDefault<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>, z.ZodTransform<number, string | number>>, z.ZodNumber>>;
     categoryId: z.ZodString;
+    categoryName: z.ZodOptional<z.ZodString>;
     checkoutUrl: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const updateTemplateSchema: z.ZodObject<{
@@ -47,6 +48,7 @@ export declare const updateTemplateSchema: z.ZodObject<{
     version: z.ZodOptional<z.ZodDefault<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>, z.ZodTransform<number, string | number>>, z.ZodNumber>>>;
     pages: z.ZodOptional<z.ZodDefault<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>, z.ZodTransform<number, string | number>>, z.ZodNumber>>>;
     categoryId: z.ZodOptional<z.ZodString>;
+    categoryName: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     checkoutUrl: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, z.core.$strip>;
 export declare const templateIdSchema: z.ZodObject<{
@@ -71,6 +73,9 @@ export declare const templateQuerySchema: z.ZodObject<{
     minPrice: z.ZodOptional<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>;
     maxPrice: z.ZodOptional<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>;
 }, z.core.$strip>;
+export declare const newArrivalsQuerySchema: z.ZodObject<{
+    limit: z.ZodDefault<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>;
+}, z.core.$strip>;
 export interface Template {
     id: string;
     title: string;
@@ -94,6 +99,7 @@ export interface Template {
     downloads: number;
     totalPurchase: number;
     categoryId: string;
+    categoryName?: string;
     checkoutUrl?: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -133,6 +139,7 @@ export interface CreateTemplateInput {
     version?: number;
     pages?: number;
     categoryId: string;
+    categoryName?: string;
     checkoutUrl?: string;
 }
 export interface UpdateTemplateInput {
@@ -155,6 +162,7 @@ export interface UpdateTemplateInput {
     version?: number;
     pages?: number;
     categoryId?: string;
+    categoryName?: string;
     checkoutUrl?: string;
 }
 export interface TemplateQuery {

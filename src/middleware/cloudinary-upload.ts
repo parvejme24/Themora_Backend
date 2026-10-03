@@ -179,7 +179,7 @@ export const uploadImageMemory = multer({
 }).single("image");
 
 // Upload a buffer to Cloudinary using upload_stream
-export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "techfynite/uploads"): Promise<{ url: string; publicId: string }> => {
+export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "themora/uploads"): Promise<{ url: string; publicId: string }> => {
   return new Promise((resolve, reject) => {
     if (!file || !file.buffer) {
       return reject(new Error("No file buffer provided"));
@@ -200,7 +200,7 @@ export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "te
 };
 
 // Upload ZIP files and other archives to Cloudinary as raw files
-export const uploadArchiveFile = (file: Express.Multer.File, folder = "techfynite/source-files"): Promise<{ url: string; publicId: string }> => {
+export const uploadArchiveFile = (file: Express.Multer.File, folder = "themora/source-files"): Promise<{ url: string; publicId: string }> => {
   return new Promise((resolve, reject) => {
     if (!file || !file.buffer) {
       return reject(new Error("No file buffer provided"));
@@ -340,7 +340,7 @@ export const extractPublicId = (url: string): string | null => {
 };
 
 // Upload multiple buffers to Cloudinary
-export const uploadBuffersToCloudinary = async (files: Express.Multer.File[], folder = "techfynite/uploads"): Promise<{ url: string; publicId: string }[]> => {
+export const uploadBuffersToCloudinary = async (files: Express.Multer.File[], folder = "themora/uploads"): Promise<{ url: string; publicId: string }[]> => {
   const uploadPromises = files.map(file => uploadBufferToCloudinary(file, folder));
   return Promise.all(uploadPromises);
 };

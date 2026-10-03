@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { contactService } from "./contact.service";
 import { IContactQuery } from "./contact.interface";
+import { sendContactNotification, sendContactReplyEmail } from "../../utils/email";
 
 // Get all contacts (Admin/Super Admin only)
 export const getAllContacts = async (req: Request, res: Response) => {
@@ -38,6 +39,11 @@ export const getContactById = async (req: Request, res: Response) => {
         data: null,
       });
     }
+
+    const user = (req as any).user;
+    if (user?.role !== "ADMIN" && contact.userId !== user?.id && contact.email.toLowerCase() !== user?.email?.toLowerCase()) {
+      return res.status(404).json({ success: false, message: "Contact not found", data: null });
+    }
     
     return res.status(200).json({
       success: true,
@@ -58,6 +64,10 @@ export const getContactById = async (req: Request, res: Response) => {
 export const getContactsByUserEmail = async (req: Request, res: Response) => {
   try {
     const { userEmail } = req.params;
+    const user = (req as any).user;
+    if (user?.role !== "ADMIN" && user?.email?.toLowerCase() !== userEmail.toLowerCase()) {
+      return res.status(403).json({ success: false, message: "You can only view contact requests for your own account" });
+    }
     
     const contacts = await contactService.getContactsByUserEmail(userEmail);
     
@@ -79,13 +89,23 @@ export const getContactsByUserEmail = async (req: Request, res: Response) => {
 // Create new contact (Public route)
 export const addNewContact = async (req: Request, res: Response) => {
   try {
-    const contactData = (req as any).validatedBody || req.body;
+    const contactData = {
+      ...((req as any).validatedBody || req.body),
+      userId: (req as any).user?.id,
+    };
     
     const contact = await contactService.createContact(contactData);
+    let notificationSent = false;
+    try {
+      notificationSent = await sendContactNotification(contactData);
+    } catch (emailError) {
+      console.error("Contact saved but notification email failed:", emailError);
+    }
     
     return res.status(201).json({
       success: true,
-      message: "Contact submitted successfully",
+      message: notificationSent ? "Contact submitted successfully" : "Contact submitted; email notification could not be sent",
+      notificationSent,
       data: contact,
     });
   } catch (error) {
@@ -105,8 +125,8 @@ export const updateContact = async (req: Request, res: Response) => {
     const updateData = (req as any).validatedBody || req.body;
     
     // Check if contact exists
-    const contactExists = await contactService.contactExists(id);
-    if (!contactExists) {
+    const contact = await contactService.getContactById(id);
+    if (!contact) {
       return res.status(404).json({
         success: false,
         message: "Contact not found",
@@ -144,9 +164,8 @@ export const deleteContact = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    // Check if contact exists
-    const contactExists = await contactService.contactExists(id);
-    if (!contactExists) {
+    const contact = await contactService.getContactById(id);
+    if (!contact) {
       return res.status(404).json({
         success: false,
         message: "Contact not found",
@@ -194,9 +213,8 @@ export const sendContactReply = async (req: Request, res: Response) => {
       });
     }
     
-    // Check if contact exists
-    const contactExists = await contactService.contactExists(id);
-    if (!contactExists) {
+    const contact = await contactService.getContactById(id);
+    if (!contact) {
       return res.status(404).json({
         success: false,
         message: "Contact not found",
@@ -212,10 +230,22 @@ export const sendContactReply = async (req: Request, res: Response) => {
     };
     
     const reply = await contactService.createContactReply(replyData);
+    try {
+      await sendContactReplyEmail(contact.email, contact.fullName, subject, message);
+    } catch (emailError) {
+      console.error("Contact reply saved but email delivery failed:", emailError);
+      return res.status(201).json({
+        success: true,
+        message: "Reply saved, but email delivery failed",
+        emailSent: false,
+        data: reply,
+      });
+    }
     
     return res.status(201).json({
       success: true,
       message: "Reply sent successfully",
+      emailSent: true,
       data: reply,
     });
   } catch (error) {

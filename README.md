@@ -1,8 +1,8 @@
-# 🚀 TechFynite Backend API
+# 🚀 Themora Backend API
 
 <div align="center">
 
-![TechFynite Logo](https://img.shields.io/badge/TechFynite-Backend-blue?style=for-the-badge&logo=node.js)
+![Themora Logo](https://img.shields.io/badge/Themora-Backend-blue?style=for-the-badge&logo=node.js)
 ![Version](https://img.shields.io/badge/version-1.0.0-green?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
@@ -20,7 +20,7 @@
 
 ## 🎯 Project Overview
 
-**TechFynite Backend** is a robust, scalable REST API built for a modern e-commerce platform specializing in digital templates and content management. The system handles user authentication, template sales, blog management, order processing, and customer support with enterprise-grade security and performance.
+**Themora Backend** is a robust, scalable REST API built for a modern e-commerce platform specializing in digital templates and content management. The system handles user authentication, template sales, blog management, order processing, and customer support with enterprise-grade security and performance.
 
 ### 🎪 What Makes This Special?
 
@@ -265,8 +265,8 @@ DELETE /contacts/:id      # Delete contact (Admin)
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/techfynite-backend.git
-cd techfynite-backend
+git clone https://github.com/yourusername/themora-backend.git
+cd themora-backend
 ```
 
 2. **Install dependencies**
@@ -312,30 +312,37 @@ npm run vercel-build # Build for Vercel deployment
 ### 📝 Required Environment Variables
 
 ```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/techfynite"
+# Runtime (DATABASE_URL is required)
+NODE_ENV=development
+PORT=5050
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
 
-# JWT Secret
-JWT_SECRET="your-super-secret-jwt-key"
+# Frontend URLs allowed by CORS
+FRONTEND_URL="http://localhost:3000"
+CORS_ORIGINS="http://localhost:3001,http://localhost:5174"
+BCRYPT_ROUNDS=12
 
-# Email Configuration
-EMAIL_HOST="smtp.gmail.com"
-EMAIL_PORT=587
-EMAIL_USER="your-email@gmail.com"
-EMAIL_PASS="your-app-password"
+# Email
+SMTP_HOST="smtp.example.com"
+SMTP_PORT=587
+SMTP_USER="your-email@example.com"
+SMTP_PASS="your-email-password"
+EMAIL_FROM="Themora <your-email@example.com>"
+CONTACT_NOTIFICATION_EMAIL="support@example.com"
 
 # Cloudinary
 CLOUDINARY_CLOUD_NAME="your-cloud-name"
-CLOUDINARY_API_KEY="your-api-key"
-CLOUDINARY_API_SECRET="your-api-secret"
+CLOUDINARY_API_KEY="your-cloudinary-api-key"
+CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
+CLOUDINARY_URL=""
 
-# LemonSqueezy
-LEMONSQUEEZY_API_KEY="your-lemonsqueezy-key"
+# Lemon Squeezy checkout and webhook
+LEMONSQUEEZY_API_KEY="your-api-key"
+LEMONSQUEEZY_STORE_ID="your-store-id"
 LEMONSQUEEZY_WEBHOOK_SECRET="your-webhook-secret"
-
-# Frontend URLs
-FRONTEND_URL="http://localhost:3000"
 ```
+
+This repository uses `prisma db push` rather than a tracked migration baseline. After pulling schema changes, run `npx prisma db push` and `npx prisma generate`. Then configure a Lemon Squeezy variant ID on each pricing plan and theme in the admin dashboard; the variant prices should match the displayed prices. Contact notifications are sent to `CONTACT_NOTIFICATION_EMAIL` (or `SMTP_USER` if it is unset).
 
 ---
 
@@ -599,10 +606,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 <div align="center">
 
-**🚀 Ready to explore the TechFynite Backend?**
+**🚀 Ready to explore the Themora Backend?**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Site-brightgreen?style=for-the-badge)](https://techfynite.vercel.app)
-[![GitHub](https://img.shields.io/badge/GitHub-View%20Code-black?style=for-the-badge&logo=github)](https://github.com/yourusername/techfynite-backend)
+[![GitHub](https://img.shields.io/badge/GitHub-View%20Code-black?style=for-the-badge&logo=github)](https://github.com/yourusername/themora-backend)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/yourprofile)
 
 **Built with ❤️ by [Your Name]**

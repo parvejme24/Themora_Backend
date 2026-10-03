@@ -16,22 +16,23 @@ import {
   validateContactParams,
   validateUserEmailParams,
 } from "./contact.validate";
+import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus, optionalAuth } from "../../middleware/authMiddleware";
 
 const router = Router();
 
 // Public route - anyone can submit contact form (with or without user account)
-router.post("/contacts", validateCreateContact, addNewContact);
+router.post("/contacts", optionalAuth, validateCreateContact, addNewContact);
 
 // Admin/Super Admin only routes
-router.get("/contacts", validateContactQuery, getAllContacts);
-router.post("/contacts/:id/reply", validateContactParams, validateCreateContactReply, sendContactReply);
+router.get("/contacts", authenticateAdminAndCheckStatus, validateContactQuery, getAllContacts);
+router.post("/contacts/:id/reply", authenticateAdminAndCheckStatus, validateContactParams, validateCreateContactReply, sendContactReply);
 
 // Stats route must come before :id route
-router.get("/contacts/stats", getContactStats);
+router.get("/contacts/stats", authenticateAdminAndCheckStatus, getContactStats);
 
 // User routes - requires user account
-router.get("/contacts/email/:userEmail", validateUserEmailParams, getContactsByUserEmail);
-router.get("/contacts/:id", validateContactParams, getContactById);
-router.delete("/contacts/:id", validateContactParams, deleteContact);
+router.get("/contacts/email/:userEmail", authenticateAndCheckStatus, validateUserEmailParams, getContactsByUserEmail);
+router.get("/contacts/:id", optionalAuth, validateContactParams, getContactById);
+router.delete("/contacts/:id", authenticateAdminAndCheckStatus, validateContactParams, deleteContact);
 
 export default router;

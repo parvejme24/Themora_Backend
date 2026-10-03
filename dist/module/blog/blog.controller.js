@@ -1,11 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDraftBlogs = exports.getPublishedBlogs = exports.togglePublish = exports.toggleBlogLike = exports.getBlogStats = exports.getBlogsByAuthor = exports.getBlogsByCategory = exports.deleteBlog = exports.updateBlog = exports.addBlog = exports.getBlogById = exports.getAllBlogs = void 0;
+exports.getUserReaction = exports.getBlogReactions = exports.addBlogReaction = exports.getDraftBlogs = exports.getPublishedBlogs = exports.togglePublish = exports.toggleBlogLike = exports.getBlogStats = exports.getBlogsByAuthor = exports.getBlogsByCategory = exports.deleteBlog = exports.updateBlog = exports.addBlog = exports.getBlogById = exports.getAllBlogs = void 0;
 const blog_service_1 = require("./blog.service");
 const cloudinary_upload_1 = require("../../middleware/cloudinary-upload");
 const getAllBlogs = async (req, res) => {
     try {
-        const query = req.validatedQuery || req.query;
+        const user = req.user;
+        const query = {
+            ...(req.validatedQuery || req.query),
+            ...(user?.role === "ADMIN" ? {} : { isPublished: true }),
+        };
         const result = await blog_service_1.blogService.getAllBlogs(query);
         return res.status(200).json({
             success: true,
@@ -27,6 +31,7 @@ exports.getAllBlogs = getAllBlogs;
 const getBlogById = async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user?.id || req.userId;
         const blog = await blog_service_1.blogService.getBlogById(id);
         if (!blog) {
             return res.status(404).json({
@@ -35,7 +40,12 @@ const getBlogById = async (req, res) => {
                 data: null,
             });
         }
-        await blog_service_1.blogService.incrementViewCount(id);
+        if (!blog.isPublished && req.user?.role !== "ADMIN" && blog.authorId !== req.user?.id) {
+            return res.status(404).json({ success: false, message: "Blog not found", data: null });
+        }
+        if (userId) {
+            await blog_service_1.blogService.incrementViewCount(id, userId);
+        }
         return res.status(200).json({
             success: true,
             message: "Blog fetched successfully",
@@ -56,18 +66,6 @@ const addBlog = async (req, res) => {
     try {
         let blogData = { ...req.body };
         if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
-            if (blogData.description && typeof blogData.description === 'string') {
-                try {
-                    blogData.description = JSON.parse(blogData.description);
-                }
-                catch (e) {
-                    return res.status(400).json({
-                        success: false,
-                        message: "Invalid description format. Must be valid JSON.",
-                        error: "Description field must be a valid JSON string"
-                    });
-                }
-            }
             if (blogData.content && typeof blogData.content === 'string') {
                 try {
                     blogData.content = JSON.parse(blogData.content);
@@ -93,22 +91,22 @@ const addBlog = async (req, res) => {
             const additionalImageFiles = Array.isArray(filesMap.images) ? filesMap.images : [];
             if (mainImageFile) {
                 try {
-                    const uploadedMain = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(mainImageFile, "techfynite/blogs");
-                    blogData.imageUrl = uploadedMain.url;
-                    console.log("✅ Main image uploaded successfully:", uploadedMain.url);
+                    const uploadedMain = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(mainImageFile, "themora/blogs");
+                    blogData.featuredImageUrl = uploadedMain.url;
+                    console.log("✅ Featured image uploaded successfully:", uploadedMain.url);
                 }
                 catch (error) {
-                    console.error("❌ Error uploading main image:", error);
+                    console.error("❌ Error uploading featured image:", error);
                     return res.status(500).json({
                         success: false,
-                        message: "Failed to upload main image",
+                        message: "Failed to upload featured image",
                         error: error instanceof Error ? error.message : "Unknown error",
                     });
                 }
             }
             if (additionalImageFiles.length > 0) {
                 try {
-                    const uploaded = await (0, cloudinary_upload_1.uploadBuffersToCloudinary)(additionalImageFiles, "techfynite/blogs");
+                    const uploaded = await (0, cloudinary_upload_1.uploadBuffersToCloudinary)(additionalImageFiles, "themora/blogs");
                     blogData.screenshots = uploaded.map((u) => u.url);
                     console.log("✅ Additional images uploaded successfully:", uploaded.length);
                 }
@@ -118,18 +116,6 @@ const addBlog = async (req, res) => {
                         success: false,
                         message: "Failed to upload additional images",
                         error: error instanceof Error ? error.message : "Unknown error",
-                    });
-                }
-            }
-            if (blogData.description && typeof blogData.description === 'string') {
-                try {
-                    blogData.description = JSON.parse(blogData.description);
-                }
-                catch (e) {
-                    return res.status(400).json({
-                        success: false,
-                        message: "Invalid description format. Must be valid JSON.",
-                        error: "Description field must be a valid JSON string"
                     });
                 }
             }
@@ -152,6 +138,10 @@ const addBlog = async (req, res) => {
                 blogData.isPublished = blogData.isPublished === 'true';
             }
         }
+        const user = req.user;
+        blogData.authorId = user.id;
+        if (user.role !== "ADMIN")
+            blogData.isPublished = false;
         const blog = await blog_service_1.blogService.createBlog(blogData);
         return res.status(201).json({
             success: true,
@@ -172,6 +162,13 @@ exports.addBlog = addBlog;
 const updateBlog = async (req, res) => {
     try {
         const { id } = req.params;
+        const user = req.user;
+        const existingBlog = await blog_service_1.blogService.getBlogById(id);
+        if (!existingBlog)
+            return res.status(404).json({ success: false, message: "Blog not found", data: null });
+        if (user.role !== "ADMIN" && existingBlog.authorId !== user.id) {
+            return res.status(403).json({ success: false, message: "You can only update your own blog posts" });
+        }
         let updateData = { ...req.body };
         if (req.headers['content-type']?.includes('multipart/form-data')) {
             const mainImageFile = req.file;
@@ -179,22 +176,22 @@ const updateBlog = async (req, res) => {
             const additionalImageFiles = Array.isArray(filesMap.images) ? filesMap.images : [];
             if (mainImageFile) {
                 try {
-                    const uploadedMain = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(mainImageFile, "techfynite/blogs");
-                    updateData.imageUrl = uploadedMain.url;
-                    console.log("✅ Main image uploaded successfully:", uploadedMain.url);
+                    const uploadedMain = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(mainImageFile, "themora/blogs");
+                    updateData.featuredImageUrl = uploadedMain.url;
+                    console.log("✅ Featured image uploaded successfully:", uploadedMain.url);
                 }
                 catch (error) {
-                    console.error("❌ Error uploading main image:", error);
+                    console.error("❌ Error uploading featured image:", error);
                     return res.status(500).json({
                         success: false,
-                        message: "Failed to upload main image",
+                        message: "Failed to upload featured image",
                         error: error instanceof Error ? error.message : "Unknown error",
                     });
                 }
             }
             if (additionalImageFiles.length > 0) {
                 try {
-                    const uploaded = await (0, cloudinary_upload_1.uploadBuffersToCloudinary)(additionalImageFiles, "techfynite/blogs");
+                    const uploaded = await (0, cloudinary_upload_1.uploadBuffersToCloudinary)(additionalImageFiles, "themora/blogs");
                     updateData.screenshots = uploaded.map((u) => u.url);
                     console.log("✅ Additional images uploaded successfully:", uploaded.length);
                 }
@@ -204,18 +201,6 @@ const updateBlog = async (req, res) => {
                         success: false,
                         message: "Failed to upload additional images",
                         error: error instanceof Error ? error.message : "Unknown error",
-                    });
-                }
-            }
-            if (updateData.description && typeof updateData.description === 'string') {
-                try {
-                    updateData.description = JSON.parse(updateData.description);
-                }
-                catch (e) {
-                    return res.status(400).json({
-                        success: false,
-                        message: "Invalid description format. Must be valid JSON.",
-                        error: "Description field must be a valid JSON string"
                     });
                 }
             }
@@ -238,6 +223,8 @@ const updateBlog = async (req, res) => {
                 updateData.isPublished = updateData.isPublished === 'true';
             }
         }
+        if (user.role !== "ADMIN")
+            updateData.isPublished = false;
         const blog = await blog_service_1.blogService.updateBlog(id, updateData);
         if (!blog) {
             return res.status(404).json({
@@ -265,6 +252,13 @@ exports.updateBlog = updateBlog;
 const deleteBlog = async (req, res) => {
     try {
         const { id } = req.params;
+        const user = req.user;
+        const blog = await blog_service_1.blogService.getBlogById(id);
+        if (!blog)
+            return res.status(404).json({ success: false, message: "Blog not found", data: null });
+        if (user.role !== "ADMIN" && blog.authorId !== user.id) {
+            return res.status(403).json({ success: false, message: "You can only delete your own blog posts" });
+        }
         const deleted = await blog_service_1.blogService.deleteBlog(id);
         if (!deleted) {
             return res.status(404).json({
@@ -292,7 +286,11 @@ exports.deleteBlog = deleteBlog;
 const getBlogsByCategory = async (req, res) => {
     try {
         const { categoryId } = req.params;
-        const query = req.validatedQuery || req.query;
+        const user = req.user;
+        const query = {
+            ...(req.validatedQuery || req.query),
+            ...(user?.role === "ADMIN" ? {} : { isPublished: true }),
+        };
         const result = await blog_service_1.blogService.getBlogsByCategory(categoryId, query);
         return res.status(200).json({
             success: true,
@@ -314,7 +312,12 @@ exports.getBlogsByCategory = getBlogsByCategory;
 const getBlogsByAuthor = async (req, res) => {
     try {
         const { authorId } = req.params;
-        const query = req.validatedQuery || req.query;
+        const user = req.user;
+        const canViewDrafts = user?.role === "ADMIN" || user?.id === authorId;
+        const query = {
+            ...(req.validatedQuery || req.query),
+            ...(canViewDrafts ? {} : { isPublished: true }),
+        };
         const result = await blog_service_1.blogService.getBlogsByAuthor(authorId, query);
         return res.status(200).json({
             success: true,
@@ -355,7 +358,7 @@ exports.getBlogStats = getBlogStats;
 const toggleBlogLike = async (req, res) => {
     try {
         const { id } = req.params;
-        const { userId } = req.body;
+        const userId = req.user?.id;
         if (!userId) {
             return res.status(400).json({
                 success: false,
@@ -449,4 +452,81 @@ const getDraftBlogs = async (req, res) => {
     }
 };
 exports.getDraftBlogs = getDraftBlogs;
+const addBlogReaction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+        const { reactionType } = req.body;
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID is required",
+                data: null,
+            });
+        }
+        const result = await blog_service_1.blogService.addReaction(id, userId, reactionType);
+        return res.status(200).json({
+            success: true,
+            message: result.reaction ? "Reaction added successfully" : "Reaction removed successfully",
+            data: result,
+        });
+    }
+    catch (error) {
+        console.error("Error adding reaction:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add reaction",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+exports.addBlogReaction = addBlogReaction;
+const getBlogReactions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reactions = await blog_service_1.blogService.getBlogReactions(id);
+        return res.status(200).json({
+            success: true,
+            message: "Reactions fetched successfully",
+            data: reactions,
+        });
+    }
+    catch (error) {
+        console.error("Error fetching reactions:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch reactions",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+exports.getBlogReactions = getBlogReactions;
+const getUserReaction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+        if (!userId || typeof userId !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: "User ID is required",
+                data: null,
+            });
+        }
+        const reaction = await blog_service_1.blogService.getUserReaction(id, userId);
+        return res.status(200).json({
+            success: true,
+            message: "User reaction fetched successfully",
+            data: reaction,
+        });
+    }
+    catch (error) {
+        console.error("Error fetching user reaction:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch user reaction",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+exports.getUserReaction = getUserReaction;
 //# sourceMappingURL=blog.controller.js.map

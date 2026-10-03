@@ -1,20 +1,18 @@
-// Database configuration
-export const DATABASE_URL: string = process.env.DATABASE_URL || "";
+import { env } from "./env";
 
-// General configuration
-export const BCRYPT_ROUNDS: number = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
-export const FRONTEND_URL: string = process.env.FRONTEND_URL || "";
-export const PORT: number = parseInt(process.env.SERVER_RUNNING_PORT || "3030", 10);
+export const DATABASE_URL = env.DATABASE_URL;
+export const BCRYPT_ROUNDS = env.BCRYPT_ROUNDS;
+export const FRONTEND_URL = env.FRONTEND_URL;
+export const PORT = env.PORT;
 
-// SMTP configuration
-export const SMTP_HOST: string = process.env.SMTP_HOST || "";
-export const SMTP_PORT: string = process.env.SMTP_PORT || "";
-export const SMTP_USER: string = process.env.SMTP_USER || "";
-export const SMTP_PASS: string = process.env.SMTP_PASS || "";
-export const EMAIL_FROM: string = process.env.EMAIL_FROM || "";
+export const SMTP_HOST = env.SMTP_HOST;
+export const SMTP_PORT = env.SMTP_PORT;
+export const SMTP_USER = env.SMTP_USER;
+export const SMTP_PASS = env.SMTP_PASS;
+export const EMAIL_FROM = env.EMAIL_FROM;
+export const CONTACT_NOTIFICATION_EMAIL = env.CONTACT_NOTIFICATION_EMAIL;
 
-// Cloudinary configuration
-export const CLOUDINARY_CLOUD_NAME: string = process.env.CLOUDINARY_CLOUD_NAME || "";
-export const CLOUDINARY_API_KEY: string = process.env.CLOUDINARY_API_KEY || "";
-export const CLOUDINARY_API_SECRET: string = process.env.CLOUDINARY_API_SECRET || "";
-export const CLOUDINARY_URL: string = process.env.CLOUDINARY_URL || "";
+export const CLOUDINARY_CLOUD_NAME = env.CLOUDINARY_CLOUD_NAME;
+export const CLOUDINARY_API_KEY = env.CLOUDINARY_API_KEY;
+export const CLOUDINARY_API_SECRET = env.CLOUDINARY_API_SECRET;
+export const CLOUDINARY_URL = env.CLOUDINARY_URL;

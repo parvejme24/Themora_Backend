@@ -39,6 +39,7 @@ model User {
   licenses                License[]
   newsletterSubscriptions Newsletter[]      @relation("UserNewsletterSubscriptions")
   orders                  OrderInvoice[]
+  planEntitlements        PlanEntitlement[]
   purchasedTemplates      Template[]        @relation("UserPurchases")
 
   @@index([email])
@@ -113,6 +114,49 @@ model Template {
   @@map("templates")
 }
 
+model PricingPlan {
+  id                    String           @id @default(uuid())
+  slug                  String           @unique
+  title                 String
+  description           String
+  price                 Float
+  currency              String           @default("USD")
+  recommended           Boolean          @default(false)
+  features              String[]
+  websiteLimit          Int?
+  lemonsqueezyVariantId String?          @unique
+  isActive              Boolean          @default(true)
+  sortOrder             Int              @default(0)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  orders                OrderInvoice[]
+  entitlements          PlanEntitlement[]
+
+  @@index([isActive, sortOrder])
+  @@map("pricing_plans")
+}
+
+model PlanEntitlement {
+  id               String       @id @default(uuid())
+  pricingPlanId    String
+  orderId          String       @unique
+  userId           String?
+  customerEmail    String
+  websitesAllowed  Int?
+  supportExpiresAt DateTime?
+  isActive         Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  pricingPlan      PricingPlan  @relation(fields: [pricingPlanId], references: [id], onDelete: Restrict)
+  order            OrderInvoice @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([customerEmail])
+  @@index([isActive])
+  @@map("plan_entitlements")
+}
+
 model Link {
   id         String   @id @default(uuid())
   templateId String
@@ -130,7 +174,8 @@ model Link {
 model OrderInvoice {
   id                    String      @id @default(uuid())
   userId                String?
-  templateId            String
+  templateId            String?
+  pricingPlanId         String?
   lemonsqueezyOrderId   String      @unique
   lemonsqueezyInvoiceId String?
   status                OrderStatus @default(PENDING)
@@ -146,11 +191,14 @@ model OrderInvoice {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
   licenses              License[]
-  template              Template    @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: Cascade)
+  planEntitlement       PlanEntitlement?
+  template              Template?     @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
+  pricingPlan           PricingPlan?  @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
   user                  User?       @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([templateId])
+  @@index([pricingPlanId])
   @@index([lemonsqueezyOrderId])
   @@index([status])
   @@index([createdAt])

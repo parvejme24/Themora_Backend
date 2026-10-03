@@ -70,7 +70,7 @@ export const createBlogCategory = async (req: Request, res: Response) => {
       
       // Upload file buffer to Cloudinary if file exists
       if ((req as any).file) {
-        const uploaded = await uploadBufferToCloudinary((req as any).file, "techfynite/blog-categories");
+        const uploaded = await uploadBufferToCloudinary((req as any).file, "themora/blog-categories");
         imageUrl = uploaded.url;
       }
     } else {
@@ -150,7 +150,7 @@ export const updateBlogCategory = async (req: Request, res: Response) => {
 
     // Upload file buffer to Cloudinary if file exists
     if ((req as any).file) {
-      const uploaded = await uploadBufferToCloudinary((req as any).file, "techfynite/blog-categories");
+      const uploaded = await uploadBufferToCloudinary((req as any).file, "themora/blog-categories");
       imageUrl = uploaded.url;
     }
 

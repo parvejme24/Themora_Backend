@@ -1,7 +1,25 @@
 import { Request, Response } from "express";
+import { PrismaClient } from "@prisma/client";
 import { TemplateService } from "./template.service";
+import { OrderService } from "../order/order.service";
 
 const templateService = new TemplateService();
+const prisma = new PrismaClient();
+const orderService = new OrderService();
+
+const userHasTemplateAccess = async (userId: string, templateId: string) => {
+  const [license, planEntitlement] = await Promise.all([
+    prisma.license.findFirst({
+      where: { userId, templateId, isActive: true, order: { status: "COMPLETED" } },
+      select: { id: true },
+    }),
+    prisma.planEntitlement.findFirst({
+      where: { userId, isActive: true, order: { status: "COMPLETED" } },
+      select: { id: true },
+    }),
+  ]);
+  return Boolean(license || planEntitlement);
+};
 
 // Get all templates
 export const getAllTemplates = async (req: Request, res: Response) => {
@@ -23,7 +41,9 @@ export const getAllTemplates = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: "Templates fetched successfully",
-      data: result.templates,
+      data: (req as any).user?.role === "ADMIN"
+        ? result.templates
+        : result.templates.map(({ sourceFiles, ...template }) => template),
       pagination: result.pagination,
     });
   } catch (error: any) {
@@ -51,10 +71,14 @@ export const getTemplateById = async (req: Request, res: Response) => {
       });
     }
 
+    const safeTemplate = (req as any).user?.role === "ADMIN"
+      ? template
+      : (({ sourceFiles, ...publicTemplate }) => ({ ...publicTemplate, sourceFileCount: sourceFiles.length }))(template);
+
     return res.status(200).json({
       success: true,
       message: "Template fetched successfully",
-      data: template,
+      data: safeTemplate,
     });
   } catch (error: any) {
     console.error("Error fetching template:", error);
@@ -77,7 +101,7 @@ export const createTemplate = async (req: Request, res: Response) => {
     // Handle main image upload
     if (req.files && (req.files as any).image && (req.files as any).image[0]) {
       try {
-        const uploadResult = await uploadBufferToCloudinary((req.files as any).image[0], "techfynite/templates");
+        const uploadResult = await uploadBufferToCloudinary((req.files as any).image[0], "themora/templates");
         data.imageUrl = uploadResult.url;
       } catch (uploadError) {
         console.error("Error uploading image:", uploadError);
@@ -99,11 +123,11 @@ export const createTemplate = async (req: Request, res: Response) => {
           // Check if it's an archive file (ZIP, RAR, etc.)
           if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension)) {
             const { uploadArchiveFile } = await import("../../middleware/cloudinary-upload");
-            const uploadResult = await uploadArchiveFile(file, "techfynite/source-files");
+            const uploadResult = await uploadArchiveFile(file, "themora/source-files");
             sourceFileUrls.push(uploadResult.url);
           } else {
             // For other files, use Cloudinary
-            const uploadResult = await uploadBufferToCloudinary(file, "techfynite/templates/source-files");
+            const uploadResult = await uploadBufferToCloudinary(file, "themora/templates/source-files");
             sourceFileUrls.push(uploadResult.url);
           }
         }
@@ -146,7 +170,7 @@ export const updateTemplate = async (req: Request, res: Response) => {
     // Handle main image upload
     if (req.files && (req.files as any).image && (req.files as any).image[0]) {
       try {
-        const uploadResult = await uploadBufferToCloudinary((req.files as any).image[0], "techfynite/templates");
+        const uploadResult = await uploadBufferToCloudinary((req.files as any).image[0], "themora/templates");
         data.imageUrl = uploadResult.url;
       } catch (uploadError) {
         console.error("Error uploading image:", uploadError);
@@ -168,11 +192,11 @@ export const updateTemplate = async (req: Request, res: Response) => {
           // Check if it's an archive file (ZIP, RAR, etc.)
           if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension)) {
             const { uploadArchiveFile } = await import("../../middleware/cloudinary-upload");
-            const uploadResult = await uploadArchiveFile(file, "techfynite/source-files");
+            const uploadResult = await uploadArchiveFile(file, "themora/source-files");
             sourceFileUrls.push(uploadResult.url);
           } else {
             // For other files, use Cloudinary
-            const uploadResult = await uploadBufferToCloudinary(file, "techfynite/templates/source-files");
+            const uploadResult = await uploadBufferToCloudinary(file, "themora/templates/source-files");
             sourceFileUrls.push(uploadResult.url);
           }
         }
@@ -243,6 +267,15 @@ export const deleteTemplate = async (req: Request, res: Response) => {
 export const downloadSourceFile = async (req: Request, res: Response) => {
   try {
     const { templateId, fileIndex } = req.params;
+    const user = (req as any).user;
+
+    if (user?.role !== "ADMIN") {
+      if (!user?.id || !user?.email) return res.status(401).json({ success: false, message: "Authentication required" });
+      await orderService.claimGuestOrders(user.id, user.email);
+      if (!(await userHasTemplateAccess(user.id, templateId))) {
+        return res.status(403).json({ success: false, message: "Purchase this theme to download its files" });
+      }
+    }
     
     // Get template to find the source file URL
     const template = await templateService.getTemplateById(templateId);
@@ -254,8 +287,11 @@ export const downloadSourceFile = async (req: Request, res: Response) => {
       });
     }
 
-    const fileIndexNum = parseInt(fileIndex);
-    if (fileIndexNum < 0 || fileIndexNum >= template.sourceFiles.length) {
+    if (!/^\d+$/.test(fileIndex)) {
+      return res.status(400).json({ success: false, message: "Invalid source file index" });
+    }
+    const fileIndexNum = Number(fileIndex);
+    if (fileIndexNum >= template.sourceFiles.length) {
       return res.status(404).json({
         success: false,
         message: "Source file not found",
@@ -268,10 +304,9 @@ export const downloadSourceFile = async (req: Request, res: Response) => {
     if (fileUrl.includes('cloudinary.com') && fileUrl.includes('/raw/upload/')) {
       // For Cloudinary raw files, redirect to download URL with proper headers
       const downloadUrl = fileUrl.replace('/upload/', '/upload/fl_attachment/');
-      return res.redirect(downloadUrl);
+      return res.status(200).json({ success: true, data: { downloadUrl } });
     } else {
-      // For other files, redirect directly
-      return res.redirect(fileUrl);
+      return res.status(200).json({ success: true, data: { downloadUrl: fileUrl } });
     }
   } catch (error: any) {
     console.error("Error downloading source file:", error);
@@ -296,11 +331,14 @@ export const getNewArrivals = async (req: Request, res: Response) => {
     }
 
     const templates = await templateService.getNewArrivals(limit);
+    const responseTemplates = (req as any).user?.role === "ADMIN"
+      ? templates
+      : templates.map(({ sourceFiles, ...template }) => template);
 
     return res.status(200).json({
       success: true,
       message: "New arrivals fetched successfully",
-      data: templates,
+      data: responseTemplates,
     });
   } catch (error: any) {
     console.error("Error fetching new arrivals:", error);

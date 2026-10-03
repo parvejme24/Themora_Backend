@@ -9,6 +9,7 @@ export declare class TemplateService implements ITemplateService {
         success: boolean;
         message: string;
     }>;
+    getNewArrivals(limit?: number): Promise<Template[]>;
     getTemplateStats(): Promise<TemplateStats>;
 }
 //# sourceMappingURL=template.service.d.ts.map

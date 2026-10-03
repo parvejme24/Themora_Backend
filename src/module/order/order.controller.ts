@@ -39,6 +39,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    if (user?.email) await orderService.claimGuestOrders(user.id, user.email);
 
     const order = await orderService.getOrderById(id);
 
@@ -48,6 +50,10 @@ export const getOrderById = async (req: Request, res: Response) => {
         message: "Order not found",
         data: null,
       });
+    }
+
+    if (user?.role !== "ADMIN" && order.userId !== user?.id) {
+      return res.status(404).json({ success: false, message: "Order not found", data: null });
     }
 
     return res.status(200).json({
@@ -139,11 +145,15 @@ export const getOrderStats = async (req: Request, res: Response) => {
 // Get user orders
 export const getUserOrders = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const user = (req as any).user;
+    const userId = user?.id;
+    if (!userId || !user.email) {
+      return res.status(401).json({ success: false, message: "Authenticated account email is required" });
+    }
     const query = (req as any).validatedQuery || req.query;
     const { page = 1, limit = 10, status, templateId, sortBy, sortOrder } = query;
 
-    const result = await orderService.getUserOrders(userId, {
+    const result = await orderService.getUserOrders(userId, user.email, {
       page,
       limit,
       status,

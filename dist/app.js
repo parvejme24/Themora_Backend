@@ -9,8 +9,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const express_xss_sanitizer_1 = require("express-xss-sanitizer");
 const morgan_1 = __importDefault(require("morgan"));
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const env_1 = require("./config/env");
 const app = (0, express_1.default)();
 app.set("trust proxy", 1);
 app.use((0, morgan_1.default)("dev"));
@@ -32,27 +31,29 @@ const limiter = (0, express_rate_limit_1.default)({
 });
 app.use(limiter);
 const allowedOrigins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:5174",
-    "https://tf-f-ts.vercel.app",
-    "https://techfynite.vercel.app",
-    "https://www.techfynite.com",
-    "https://www.techfynite.org",
-];
+    env_1.env.FRONTEND_URL,
+    ...env_1.env.CORS_ORIGINS.split(",").map((origin) => origin.trim()),
+].filter(Boolean);
 app.use((0, cors_1.default)({
     origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Access-Control-Allow-Origin"],
 }));
-app.use(express_1.default.json({ limit: "10mb" }));
+app.use(express_1.default.json({
+    limit: "10mb",
+    verify: (req, _res, buffer) => {
+        if (req.url?.includes("/webhook/lemonsqueezy")) {
+            req.rawBody = Buffer.from(buffer);
+        }
+    },
+}));
 app.use(express_1.default.urlencoded({ extended: true, limit: "10mb" }));
 const routes_1 = __importDefault(require("./routes"));
 app.use(routes_1.default);
 app.get("/", (req, res) => {
     res.json({
-        message: "TechFynite Backend Server",
+        message: "Themora Backend Server",
         version: "1.0.0",
         status: "running",
     });
@@ -68,7 +69,7 @@ app.use((err, req, res, next) => {
     console.error("Error:", err.stack);
     res.status(500).json({
         error: "Internal Server Error",
-        message: process.env.NODE_ENV === "development"
+        message: env_1.env.NODE_ENV === "development"
             ? err.message
             : "Something went wrong!",
         timestamp: new Date().toISOString(),

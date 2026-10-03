@@ -1,15 +1,24 @@
-import { Blog, BlogCategory, User, BlogLike, BlogReview } from "@prisma/client";
+import { Blog, BlogCategory, User, BlogLike, BlogReview, BlogReaction } from "@prisma/client";
+export interface IBlogAuthor {
+    id: string;
+    fullName: string;
+    email: string;
+    profile?: {
+        avatarUrl: string | null;
+    } | null;
+}
 export interface IBlog extends Blog {
-    author?: User;
+    author?: IBlogAuthor | User;
     category?: BlogCategory;
     blogLikes?: BlogLike[];
+    reactions?: BlogReaction[];
     reviews?: BlogReview[];
 }
 export interface ICreateBlog {
     title: string;
     categoryId: string;
-    imageUrl?: string;
-    description: any;
+    featuredImageUrl?: string;
+    description: string;
     readingTime: number;
     authorId: string;
     slug?: string;
@@ -19,8 +28,8 @@ export interface ICreateBlog {
 export interface IUpdateBlog {
     title?: string;
     categoryId?: string;
-    imageUrl?: string;
-    description?: any;
+    featuredImageUrl?: string;
+    description?: string;
     readingTime?: number;
     slug?: string;
     isPublished?: boolean;
@@ -33,7 +42,7 @@ export interface IBlogQuery {
     categoryId?: string;
     authorId?: string;
     isPublished?: boolean;
-    sortBy?: 'createdAt' | 'updatedAt' | 'likes' | 'viewCount' | 'readingTime';
+    sortBy?: 'createdAt' | 'updatedAt' | 'reactCount' | 'viewCount' | 'readingTime';
     sortOrder?: 'asc' | 'desc';
 }
 export interface IBlogResponse {
@@ -55,6 +64,7 @@ export interface IBlogStats {
     draftBlogs: number;
     totalViews: number;
     totalLikes: number;
+    totalReactions: number;
     averageReadingTime: number;
     blogsByCategory: Array<{
         categoryId: string;
@@ -66,5 +76,10 @@ export interface IBlogStats {
         authorName: string;
         count: number;
     }>;
+}
+export interface IBlogReaction {
+    blogId: string;
+    userId: string;
+    reactionType: 'LIKE' | 'LOVE' | 'HAHA' | 'WOW' | 'SAD' | 'ANGRY';
 }
 //# sourceMappingURL=blog.interface.d.ts.map

@@ -1,12 +1,13 @@
 export interface IBlogReview {
     id: string;
     blogId: string;
-    userId: string;
-    rating: number;
+    userId?: string | null;
+    rating?: number | null;
     commentText: string;
     fullName: string;
     email: string;
     photoUrl?: string | null;
+    isHidden: boolean;
     createdAt: Date;
     updatedAt: Date;
     replies?: IBlogReviewReply[];
@@ -26,10 +27,11 @@ export interface IBlogReviewReply {
 export interface ICreateBlogReview {
     blogId: string;
     userId?: string;
-    rating: number;
+    rating?: number;
     commentText: string;
     fullName: string;
     email: string;
+    photoUrl?: string;
 }
 export interface ICreateBlogReviewReply {
     reviewId: string;
@@ -44,9 +46,15 @@ export interface IBlogReviewQuery {
     blogId?: string;
     userId?: string;
     rating?: number;
-    isApproved?: boolean;
     sortBy?: 'createdAt' | 'rating' | 'updatedAt';
     sortOrder?: 'asc' | 'desc';
+}
+export interface IUpdateBlogReview {
+    rating?: number;
+    commentText?: string;
+    fullName?: string;
+    email?: string;
+    photoUrl?: string;
 }
 export interface IBlogReviewStats {
     totalReviews: number;

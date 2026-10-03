@@ -1,248 +1,150 @@
 import { PrismaClient } from "@prisma/client";
-import { LemonSqueezyWebhookPayload, WebhookProcessingResult } from "./webhook.type";
 import crypto from "crypto";
+import { env } from "../../config/env";
+import { LemonSqueezyWebhookPayload, WebhookProcessingResult } from "./webhook.type";
 
 const prisma = new PrismaClient();
 
 export class WebhookService {
-  private readonly LEMONSQUEEZY_WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
-
-  // Verify webhook signature
-  verifyWebhookSignature(payload: string, signature: string): boolean {
-    if (!this.LEMONSQUEEZY_WEBHOOK_SECRET) {
-      console.error("LEMONSQUEEZY_WEBHOOK_SECRET not configured");
-      return false;
-    }
-
-    const expectedSignature = crypto
-      .createHmac("sha256", this.LEMONSQUEEZY_WEBHOOK_SECRET)
-      .update(payload)
-      .digest("hex");
-
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expectedSignature, "hex")
-    );
+  verifyWebhookSignature(payload: Buffer, signature: string): boolean {
+    if (!env.LEMONSQUEEZY_WEBHOOK_SECRET || !signature) return false;
+    const expected = crypto.createHmac("sha256", env.LEMONSQUEEZY_WEBHOOK_SECRET).update(payload).digest();
+    const received = Buffer.from(signature, "hex");
+    return received.length === expected.length && crypto.timingSafeEqual(received, expected);
   }
 
-  // Process order created webhook
   async processOrderCreated(payload: LemonSqueezyWebhookPayload): Promise<WebhookProcessingResult> {
     try {
       const { data } = payload;
       const { attributes } = data;
+      const variantId = attributes.first_order_item.variant_id.toString();
+      const customerEmail = attributes.user_email.trim().toLowerCase();
+      const [template, pricingPlan, user] = await Promise.all([
+        prisma.template.findFirst({ where: { lemonsqueezyVariantId: variantId } }),
+        prisma.pricingPlan.findFirst({ where: { lemonsqueezyVariantId: variantId } }),
+        prisma.user.findUnique({ where: { email: customerEmail }, select: { id: true } }),
+      ]);
 
-      // Check if order already exists
-      const existingOrder = await prisma.orderInvoice.findUnique({
-        where: { lemonsqueezyOrderId: data.id },
-      });
-
-      if (existingOrder) {
-        return {
-          success: true,
-          message: "Order already exists",
-          orderId: existingOrder.id,
-        };
+      if (Boolean(template) === Boolean(pricingPlan)) {
+        return { success: false, message: "Product variant is not uniquely configured", error: `Variant ${variantId} must map to exactly one product` };
       }
 
-      // Find template by Lemon Squeezy product ID
-      const template = await prisma.template.findFirst({
-        where: {
-          OR: [
-            { lemonsqueezyProductId: attributes.first_order_item.product_id.toString() },
-            { lemonsqueezyVariantId: attributes.first_order_item.variant_id.toString() },
-          ],
-        },
-      });
+      const existing = await prisma.orderInvoice.findUnique({ where: { lemonsqueezyOrderId: data.id } });
+      const orderStatus = this.mapLemonSqueezyStatus(attributes.status, attributes.refunded);
+      const wasCompleted = existing?.status === "COMPLETED";
+      const order = existing
+        ? await prisma.orderInvoice.update({
+            where: { id: existing.id },
+            data: { status: orderStatus, customerEmail, customerName: attributes.user_name, userId: user?.id ?? existing.userId },
+          })
+        : await prisma.orderInvoice.create({
+            data: {
+              userId: user?.id,
+              templateId: template?.id,
+              pricingPlanId: pricingPlan?.id,
+              lemonsqueezyOrderId: data.id,
+              lemonsqueezyInvoiceId: data.id,
+              status: orderStatus,
+              totalAmount: attributes.total_usd / 100,
+              currency: "USD",
+              licenseType: template ? this.determineLicenseType(attributes.first_order_item.variant_name) : "SINGLE",
+              paymentMethod: "Lemon Squeezy",
+              customerEmail,
+              customerName: attributes.user_name,
+              billingAddress: { email: customerEmail, name: attributes.user_name },
+              downloadLinks: [],
+            },
+          });
 
-      if (!template) {
-        return {
-          success: false,
-          message: "Template not found for this product",
-          error: `No template found for product ID: ${attributes.first_order_item.product_id}`,
-        };
+      if (order.status !== "COMPLETED") {
+        return { success: true, message: "Order recorded; fulfillment awaits confirmed payment", orderId: order.id };
       }
 
-      // Find or create user
-      let user = await prisma.user.findUnique({
-        where: { email: attributes.user_email },
-      });
-
-      if (!user) {
-        // Create user if doesn't exist
-        user = await prisma.user.create({
-          data: {
-            fullName: attributes.user_name,
-            email: attributes.user_email,
-            role: "USER",
-          },
-        });
-      }
-
-      // Create order
-      const order = await prisma.orderInvoice.create({
-        data: {
-          userId: user.id,
-          templateId: template.id,
-          lemonsqueezyOrderId: data.id,
-          lemonsqueezyInvoiceId: data.id, // Using order ID as invoice ID
-          status: this.mapLemonSqueezyStatus(attributes.status),
-          totalAmount: attributes.total_usd,
-          currency: "USD",
-          licenseType: this.determineLicenseType(attributes.first_order_item.variant_name),
-          paymentMethod: "Lemon Squeezy",
-          customerEmail: attributes.user_email,
-          customerName: attributes.user_name,
-          billingAddress: {
-            email: attributes.user_email,
-            name: attributes.user_name,
-          },
-          downloadLinks: [], // Will be populated when licenses are created
-        },
-      });
-
-      // Create license keys
-      const licenseKeys = await this.generateLicenseKeys(template.id, user.id, order.id, data.id);
-      
-      // Update order with download links
-      await prisma.orderInvoice.update({
-        where: { id: order.id },
-        data: {
-          downloadLinks: licenseKeys.map(license => license.licenseKey),
-        },
-      });
-
-      // Increment template purchase count
-      await prisma.template.update({
-        where: { id: template.id },
-        data: { totalPurchase: { increment: 1 } },
-      });
-
-      return {
-        success: true,
-        message: "Order and licenses created successfully",
-        orderId: order.id,
-        licenseIds: licenseKeys.map(license => license.id),
-      };
-    } catch (error: any) {
-      console.error("Error processing order created webhook:", error);
-      return {
-        success: false,
-        message: "Failed to process order",
-        error: error.message,
-      };
-    }
-  }
-
-  // Process order updated webhook
-  async processOrderUpdated(payload: LemonSqueezyWebhookPayload): Promise<WebhookProcessingResult> {
-    try {
-      const { data } = payload;
-      const { attributes } = data;
-
-      // Find existing order
-      const order = await prisma.orderInvoice.findUnique({
-        where: { lemonsqueezyOrderId: data.id },
-      });
-
-      if (!order) {
-        return {
-          success: false,
-          message: "Order not found",
-          error: `Order with Lemon Squeezy ID ${data.id} not found`,
-        };
-      }
-
-      // Update order status
-      const updatedOrder = await prisma.orderInvoice.update({
-        where: { id: order.id },
-        data: {
-          status: this.mapLemonSqueezyStatus(attributes.status),
-        },
-      });
-
-      // If order is refunded, revoke licenses
-      if (attributes.refunded) {
-        await prisma.license.updateMany({
+      if (pricingPlan) {
+        const supportExpiresAt = new Date();
+        supportExpiresAt.setFullYear(supportExpiresAt.getFullYear() + 1);
+        await prisma.planEntitlement.upsert({
           where: { orderId: order.id },
-          data: { isActive: false },
+          create: {
+            pricingPlanId: pricingPlan.id,
+            orderId: order.id,
+            userId: user?.id,
+            customerEmail,
+            websitesAllowed: pricingPlan.websiteLimit,
+            supportExpiresAt,
+          },
+          update: { userId: user?.id, customerEmail, isActive: true },
         });
+      } else if (template) {
+        let license = await prisma.license.findFirst({ where: { orderId: order.id, templateId: template.id } });
+        if (!license) {
+          const licenseType = this.determineLicenseType(attributes.first_order_item.variant_name);
+          license = await prisma.license.create({
+            data: {
+              orderId: order.id,
+              templateId: template.id,
+              userId: user?.id,
+              licenseType,
+              licenseKey: this.generateLicenseKey(),
+              lemonsqueezyOrderId: data.id,
+              isActive: true,
+              maxUsage: licenseType === "SINGLE" ? 1 : null,
+              activationLimit: licenseType === "SINGLE" ? 1 : null,
+              usedCount: 0,
+            },
+          });
+          await prisma.orderInvoice.update({
+            where: { id: order.id },
+            data: { downloadLinks: template.sourceFiles.map((_, index) => String(index)) },
+          });
+        }
+        if (!wasCompleted) {
+          await prisma.template.update({ where: { id: template.id }, data: { totalPurchase: { increment: 1 } } });
+        }
+        return { success: true, message: "Paid order and theme license fulfilled", orderId: order.id, licenseIds: [license.id] };
       }
 
-      return {
-        success: true,
-        message: "Order updated successfully",
-        orderId: updatedOrder.id,
-      };
-    } catch (error: any) {
-      console.error("Error processing order updated webhook:", error);
-      return {
-        success: false,
-        message: "Failed to process order update",
-        error: error.message,
-      };
+      return { success: true, message: "Paid plan order fulfilled", orderId: order.id };
+    } catch (error) {
+      console.error("Error processing Lemon Squeezy order:", error);
+      return { success: false, message: "Failed to process order", error: error instanceof Error ? error.message : "Unknown error" };
     }
   }
 
-  // Map Lemon Squeezy status to our order status
-  private mapLemonSqueezyStatus(lsStatus: string): "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED" | "REFUNDED" {
-    switch (lsStatus.toLowerCase()) {
-      case "pending":
-        return "PENDING";
-      case "processing":
-        return "PROCESSING";
+  async processOrderUpdated(payload: LemonSqueezyWebhookPayload): Promise<WebhookProcessingResult> {
+    const result = await this.processOrderCreated(payload);
+    if (!result.success || !result.orderId) return result;
+
+    const { attributes } = payload.data;
+    if (attributes.refunded || this.mapLemonSqueezyStatus(attributes.status, false) === "REFUNDED") {
+      await Promise.all([
+        prisma.license.updateMany({ where: { orderId: result.orderId }, data: { isActive: false } }),
+        prisma.planEntitlement.updateMany({ where: { orderId: result.orderId }, data: { isActive: false } }),
+      ]);
+    }
+    return { ...result, message: "Order status and entitlements updated" };
+  }
+
+  private mapLemonSqueezyStatus(status: string, refunded: boolean): "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED" | "REFUNDED" {
+    if (refunded || status.toLowerCase() === "refunded") return "REFUNDED";
+    switch (status.toLowerCase()) {
+      case "paid":
       case "completed":
         return "COMPLETED";
+      case "processing":
+        return "PROCESSING";
       case "cancelled":
         return "CANCELLED";
-      case "refunded":
-        return "REFUNDED";
       default:
         return "PENDING";
     }
   }
 
-  // Determine license type from variant name
   private determineLicenseType(variantName: string): "SINGLE" | "EXTENDED" {
-    const lowerVariant = variantName.toLowerCase();
-    if (lowerVariant.includes("extended") || lowerVariant.includes("commercial")) {
-      return "EXTENDED";
-    }
-    return "SINGLE";
+    return /extended|commercial/i.test(variantName) ? "EXTENDED" : "SINGLE";
   }
 
-  // Generate license keys
-  private async generateLicenseKeys(templateId: string, userId: string, orderId: string, lemonsqueezyOrderId: string) {
-    const licenses = [];
-    const licenseCount = 1; // Default to 1 license per order
-
-    for (let i = 0; i < licenseCount; i++) {
-      const licenseKey = this.generateLicenseKey();
-      
-      const license = await prisma.license.create({
-        data: {
-          orderId,
-          templateId,
-          userId,
-          licenseType: "SINGLE", // Will be updated based on variant
-          licenseKey,
-          lemonsqueezyOrderId,
-          isActive: true,
-          maxUsage: 1, // Single use by default
-          usedCount: 0,
-        },
-      });
-
-      licenses.push(license);
-    }
-
-    return licenses;
-  }
-
-  // Generate a unique license key
   private generateLicenseKey(): string {
-    const prefix = "TF";
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${prefix}-${timestamp}-${random}`;
+    return `TF-${crypto.randomUUID().toUpperCase()}`;
   }
 }

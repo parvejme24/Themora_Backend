@@ -38,12 +38,18 @@ export declare class BlogService {
         };
     }>;
     getBlogStats(): Promise<IBlogStats>;
-    incrementViewCount(id: string): Promise<void>;
+    incrementViewCount(id: string, userId?: string): Promise<void>;
     toggleLike(blogId: string, userId: string): Promise<{
         liked: boolean;
         likes: number;
     }>;
     private getBlogLikesCount;
+    addReaction(blogId: string, userId: string, reactionType: 'LIKE' | 'LOVE' | 'HAHA' | 'WOW' | 'SAD' | 'ANGRY'): Promise<{
+        reaction: any;
+        reactCount: number;
+    }>;
+    getBlogReactions(blogId: string): Promise<any[]>;
+    getUserReaction(blogId: string, userId: string): Promise<any | null>;
     updateBlogStatus(id: string, isPublished: boolean): Promise<IBlog | null>;
     togglePublish(id: string): Promise<IBlog | null>;
     private updateCategoryBlogCount;

@@ -139,7 +139,7 @@ exports.uploadImageMemory = (0, multer_1.default)({
     fileFilter: imageFilter,
     limits: { fileSize: 10 * 1024 * 1024 },
 }).single("image");
-const uploadBufferToCloudinary = (file, folder = "techfynite/uploads") => {
+const uploadBufferToCloudinary = (file, folder = "themora/uploads") => {
     return new Promise((resolve, reject) => {
         if (!file || !file.buffer) {
             return reject(new Error("No file buffer provided"));
@@ -157,7 +157,7 @@ const uploadBufferToCloudinary = (file, folder = "techfynite/uploads") => {
     });
 };
 exports.uploadBufferToCloudinary = uploadBufferToCloudinary;
-const uploadArchiveFile = (file, folder = "techfynite/source-files") => {
+const uploadArchiveFile = (file, folder = "themora/source-files") => {
     return new Promise((resolve, reject) => {
         if (!file || !file.buffer) {
             return reject(new Error("No file buffer provided"));
@@ -276,7 +276,7 @@ const extractPublicId = (url) => {
     return matches ? matches[1] : null;
 };
 exports.extractPublicId = extractPublicId;
-const uploadBuffersToCloudinary = async (files, folder = "techfynite/uploads") => {
+const uploadBuffersToCloudinary = async (files, folder = "themora/uploads") => {
     const uploadPromises = files.map(file => (0, exports.uploadBufferToCloudinary)(file, folder));
     return Promise.all(uploadPromises);
 };

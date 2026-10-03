@@ -42,6 +42,12 @@ class OrderService {
                             shortDescription: true,
                         },
                     },
+                    pricingPlan: {
+                        select: { id: true, title: true, price: true, websiteLimit: true },
+                    },
+                    planEntitlement: {
+                        select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
+                    },
                     licenses: {
                         select: {
                             id: true,
@@ -88,6 +94,12 @@ class OrderService {
                         shortDescription: true,
                     },
                 },
+                pricingPlan: {
+                    select: { id: true, title: true, price: true, websiteLimit: true },
+                },
+                planEntitlement: {
+                    select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
+                },
                 licenses: {
                     select: {
                         id: true,
@@ -125,6 +137,12 @@ class OrderService {
                         shortDescription: true,
                     },
                 },
+                pricingPlan: {
+                    select: { id: true, title: true, price: true, websiteLimit: true },
+                },
+                planEntitlement: {
+                    select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
+                },
                 licenses: {
                     select: {
                         id: true,
@@ -158,6 +176,12 @@ class OrderService {
                         imageUrl: true,
                         shortDescription: true,
                     },
+                },
+                pricingPlan: {
+                    select: { id: true, title: true, price: true, websiteLimit: true },
+                },
+                planEntitlement: {
+                    select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
                 },
                 licenses: {
                     select: {
@@ -206,7 +230,22 @@ class OrderService {
             ordersByLicenseType: ordersByLicenseTypeFormatted,
         };
     }
-    async getUserOrders(userId, query) {
+    async claimGuestOrders(userId, email) {
+        const guestOrders = await prisma.orderInvoice.findMany({
+            where: { userId: null, customerEmail: { equals: email.trim(), mode: "insensitive" } },
+            select: { id: true },
+        });
+        const orderIds = guestOrders.map((order) => order.id);
+        if (orderIds.length === 0)
+            return;
+        await prisma.$transaction([
+            prisma.orderInvoice.updateMany({ where: { id: { in: orderIds }, userId: null }, data: { userId } }),
+            prisma.license.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
+            prisma.planEntitlement.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
+        ]);
+    }
+    async getUserOrders(userId, email, query) {
+        await this.claimGuestOrders(userId, email);
         return this.getAllOrders({ ...query, userId });
     }
 }

@@ -7,6 +7,7 @@ export declare const SMTP_PORT: string;
 export declare const SMTP_USER: string;
 export declare const SMTP_PASS: string;
 export declare const EMAIL_FROM: string;
+export declare const CONTACT_NOTIFICATION_EMAIL: string;
 export declare const CLOUDINARY_CLOUD_NAME: string;
 export declare const CLOUDINARY_API_KEY: string;
 export declare const CLOUDINARY_API_SECRET: string;

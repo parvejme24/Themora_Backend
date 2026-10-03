@@ -11,7 +11,7 @@ export const createBlogSchema = z.object({
     z.number(),
     z.string().regex(/^\d+(\.\d+)?$/, "Reading time must be a number string").transform(Number)
   ]).transform((v) => (typeof v === 'string' ? Number(v) : v)).pipe(z.number().min(0).max(60)),
-  authorId: z.string().uuid("Invalid author ID"),
+  authorId: z.string().uuid("Invalid author ID").optional(),
   slug: z.string().min(1, "Slug cannot be empty").max(200, "Slug must be less than 200 characters").optional(),
   isPublished: z.union([
     z.boolean(),
@@ -67,7 +67,7 @@ export const authorIdSchema = z.object({
 
 // Blog like schema
 export const blogLikeSchema = z.object({
-  userId: z.string().uuid("Invalid user ID"),
+  userId: z.string().uuid("Invalid user ID").optional(),
 });
 
 // Blog status update schema
@@ -77,7 +77,7 @@ export const blogStatusSchema = z.object({
 
 // Blog reaction schema
 export const blogReactionSchema = z.object({
-  userId: z.string().uuid("Invalid user ID"),
+  userId: z.string().uuid("Invalid user ID").optional(),
   reactionType: z.enum(['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY']),
 });
 

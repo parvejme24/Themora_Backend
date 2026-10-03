@@ -7,7 +7,7 @@ import {
   getLicenseStats,
   getUserLicenses,
 } from './license.controller';
-import { authenticateUser, authenticateAdminAndCheckStatus } from '../../middleware/authMiddleware';
+import { authenticateAndCheckStatus, authenticateAdminAndCheckStatus } from '../../middleware/authMiddleware';
 import {
   validateLicenseKey,
   validateRevokeLicense,
@@ -17,14 +17,14 @@ import {
 
 const router = Router();
 
-// Public routes
-router.get('/licenses', validateLicenseQuery, getAllLicenses);
-router.get('/licenses/stats', getLicenseStats);
-router.get('/licenses/:id', validateLicenseId, getLicenseById);
+// Admin routes
+router.get('/licenses', authenticateAdminAndCheckStatus, validateLicenseQuery, getAllLicenses);
+router.get('/licenses/stats', authenticateAdminAndCheckStatus, getLicenseStats);
+router.get('/licenses/:id', authenticateAdminAndCheckStatus, validateLicenseId, getLicenseById);
 router.post('/licenses/validate', validateLicenseKey, validateLicense);
 
 // User routes
-router.get('/user/licenses', authenticateUser, validateLicenseQuery, getUserLicenses);
+router.get('/user/licenses', authenticateAndCheckStatus, validateLicenseQuery, getUserLicenses);
 
 // Admin routes
 router.patch('/licenses/:id/revoke', authenticateAdminAndCheckStatus, validateLicenseId, validateRevokeLicense, revokeLicense);

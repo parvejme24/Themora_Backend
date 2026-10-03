@@ -50,6 +50,12 @@ export class OrderService {
               shortDescription: true,
             },
           },
+          pricingPlan: {
+            select: { id: true, title: true, price: true, websiteLimit: true },
+          },
+          planEntitlement: {
+            select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
+          },
           licenses: {
             select: {
               id: true,
@@ -99,6 +105,12 @@ export class OrderService {
             shortDescription: true,
           },
         },
+        pricingPlan: {
+          select: { id: true, title: true, price: true, websiteLimit: true },
+        },
+        planEntitlement: {
+          select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
+        },
         licenses: {
           select: {
             id: true,
@@ -138,6 +150,12 @@ export class OrderService {
             shortDescription: true,
           },
         },
+        pricingPlan: {
+          select: { id: true, title: true, price: true, websiteLimit: true },
+        },
+        planEntitlement: {
+          select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
+        },
         licenses: {
           select: {
             id: true,
@@ -173,6 +191,12 @@ export class OrderService {
             imageUrl: true,
             shortDescription: true,
           },
+        },
+        pricingPlan: {
+          select: { id: true, title: true, price: true, websiteLimit: true },
+        },
+        planEntitlement: {
+          select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
         },
         licenses: {
           select: {
@@ -232,7 +256,23 @@ export class OrderService {
     };
   }
 
-  async getUserOrders(userId: string, query: Omit<OrderQuery, 'userId'>): Promise<PaginatedOrders> {
+  async claimGuestOrders(userId: string, email: string): Promise<void> {
+    const guestOrders = await prisma.orderInvoice.findMany({
+      where: { userId: null, customerEmail: { equals: email.trim(), mode: "insensitive" } },
+      select: { id: true },
+    });
+    const orderIds = guestOrders.map((order) => order.id);
+    if (orderIds.length === 0) return;
+
+    await prisma.$transaction([
+      prisma.orderInvoice.updateMany({ where: { id: { in: orderIds }, userId: null }, data: { userId } }),
+      prisma.license.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
+      prisma.planEntitlement.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
+    ]);
+  }
+
+  async getUserOrders(userId: string, email: string, query: Omit<OrderQuery, 'userId'>): Promise<PaginatedOrders> {
+    await this.claimGuestOrders(userId, email);
     return this.getAllOrders({ ...query, userId });
   }
 }

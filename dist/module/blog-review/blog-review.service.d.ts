@@ -1,8 +1,8 @@
-import { IBlogReview, ICreateBlogReview, ICreateBlogReviewReply, IBlogReviewQuery, IBlogReviewStats } from "./blog-review.interface";
+import { IBlogReview, ICreateBlogReview, ICreateBlogReviewReply, IBlogReviewQuery, IBlogReviewStats, IUpdateBlogReview } from "./blog-review.interface";
 export declare class BlogReviewService {
     createBlogReview(data: ICreateBlogReview): Promise<IBlogReview>;
     createBlogReviewReply(data: ICreateBlogReviewReply): Promise<any>;
-    getBlogReviews(query: IBlogReviewQuery): Promise<{
+    getBlogReviews(query: IBlogReviewQuery, isAdmin?: boolean): Promise<{
         reviews: IBlogReview[];
         pagination: {
             page: number;
@@ -14,7 +14,7 @@ export declare class BlogReviewService {
         };
     }>;
     getBlogReviewById(id: string): Promise<IBlogReview | null>;
-    getReviewsByBlogId(blogId: string, query: IBlogReviewQuery): Promise<{
+    getReviewsByBlogId(blogId: string, query: IBlogReviewQuery, isAdmin?: boolean): Promise<{
         reviews: IBlogReview[];
         pagination: {
             page: number;
@@ -25,6 +25,10 @@ export declare class BlogReviewService {
             hasPrev: boolean;
         };
     }>;
+    updateBlogReview(id: string, data: IUpdateBlogReview): Promise<IBlogReview>;
+    hideBlogReview(id: string): Promise<IBlogReview>;
+    unhideBlogReview(id: string): Promise<IBlogReview>;
+    deleteAllReviewsByBlogId(blogId: string): Promise<number>;
     deleteBlogReview(id: string): Promise<boolean>;
     deleteBlogReviewReply(id: string): Promise<boolean>;
     getBlogReviewStats(blogId?: string): Promise<IBlogReviewStats>;

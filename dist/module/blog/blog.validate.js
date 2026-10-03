@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateBlogStatus = exports.validateBlogLike = exports.validateAuthorId = exports.validateCategoryId = exports.validateBlogId = exports.validateBlogQuery = exports.validateUpdateBlog = exports.validateCreateBlog = void 0;
+exports.validateBlogReaction = exports.validateBlogStatus = exports.validateBlogLike = exports.validateAuthorId = exports.validateCategoryId = exports.validateBlogId = exports.validateBlogQuery = exports.validateUpdateBlog = exports.validateCreateBlog = void 0;
 const blog_type_1 = require("./blog.type");
 const validateCreateBlog = (req, res, next) => {
     try {
@@ -135,4 +135,20 @@ const validateBlogStatus = (req, res, next) => {
     }
 };
 exports.validateBlogStatus = validateBlogStatus;
+const validateBlogReaction = (req, res, next) => {
+    try {
+        const validatedData = blog_type_1.blogReactionSchema.parse(req.body);
+        req.body = validatedData;
+        next();
+        return;
+    }
+    catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: "Validation failed",
+            error: error.errors || error.message,
+        });
+    }
+};
+exports.validateBlogReaction = validateBlogReaction;
 //# sourceMappingURL=blog.validate.js.map

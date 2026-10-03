@@ -52,11 +52,11 @@ export declare class ContactService {
             serviceRequired: string;
         };
     } & {
+        message: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         userId: string;
-        message: string;
         subject: string;
         contactId: string;
     }>;
