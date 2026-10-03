@@ -178,3 +178,22 @@ export const getUserOrders = async (req: Request, res: Response) => {
   }
 };
 
+// Get top selling templates
+export const getTopSellingTemplates = async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit) || 5;
+    const result = await orderService.getTopSellingTemplates(limit);
+    return res.status(200).json({
+      success: true,
+      message: "Top selling templates fetched successfully",
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("Error fetching top selling templates:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch top selling templates",
+      error: error.message,
+    });
+  }
+};
