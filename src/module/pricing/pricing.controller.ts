@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { pricingService } from "./pricing.service";
+import { clearCache } from "../../middleware/cache";
 
 export const getPricingPlans = async (_req: Request, res: Response) => {
 	try {
@@ -35,6 +36,7 @@ export const getAllPricingPlans = async (_req: Request, res: Response) => {
 export const createPricingPlan = async (req: Request, res: Response) => {
 	try {
 		const plan = await pricingService.createPlan((req as any).validatedBody);
+		clearCache("/api/v1/pricing");
 		return res.status(201).json({ success: true, data: plan });
 	} catch (error) {
 		console.error("Error creating pricing plan:", error);
@@ -45,6 +47,7 @@ export const createPricingPlan = async (req: Request, res: Response) => {
 export const updatePricingPlan = async (req: Request, res: Response) => {
 	try {
 		const plan = await pricingService.updatePlan(req.params.id, (req as any).validatedBody);
+		clearCache("/api/v1/pricing");
 		return res.status(200).json({ success: true, data: plan });
 	} catch (error) {
 		console.error("Error updating pricing plan:", error);
@@ -55,6 +58,7 @@ export const updatePricingPlan = async (req: Request, res: Response) => {
 export const deletePricingPlan = async (req: Request, res: Response) => {
 	try {
 		const plan = await pricingService.deactivatePlan(req.params.id);
+		clearCache("/api/v1/pricing");
 		return res.status(200).json({ success: true, data: plan });
 	} catch (error) {
 		console.error("Error deactivating pricing plan:", error);
