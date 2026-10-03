@@ -99,6 +99,21 @@ export const resendOtp = async (req: Request, res: Response) => {
   }
 };
 
+export const requestPasswordReset = async (req: Request, res: Response) => {
+  const result = await authService.requestPasswordReset(req.body.email);
+  return res.status(result.success ? 200 : result.error === "Email delivery failed" ? 503 : 500).json(result);
+};
+
+export const verifyPasswordResetOtp = async (req: Request, res: Response) => {
+  const result = await authService.verifyPasswordResetOtp(req.body);
+  return res.status(result.success ? 200 : 400).json(result);
+};
+
+export const resetPasswordWithOtp = async (req: Request, res: Response) => {
+  const result = await authService.resetPasswordWithOtp(req.body);
+  return res.status(result.success ? 200 : result.error === "Password reset failed" ? 500 : 400).json(result);
+};
+
 // Validate session
 export const validateSession = async (req: Request, res: Response) => {
   try {
