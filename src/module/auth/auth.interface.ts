@@ -85,6 +85,10 @@ export interface IResendOtp {
   email: string;
 }
 
+export interface IResetPasswordWithOtp extends IVerifyOtp {
+  newPassword: string;
+}
+
 // User profile update interface
 export interface IUpdateProfile {
   avatarUrl?: string;
