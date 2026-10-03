@@ -146,7 +146,7 @@ export const updateBlogCategory = async (req: Request, res: Response) => {
     // Handle form data (title, slug, image)
     const title = req.body?.title;
     const slug = req.body?.slug;
-    let imageUrl;
+    let imageUrl = req.body?.imageUrl;
 
     // Upload file buffer to Cloudinary if file exists
     if ((req as any).file) {

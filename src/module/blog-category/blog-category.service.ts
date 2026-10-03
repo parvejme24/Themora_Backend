@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { BlogCategory, PaginatedResult } from "./blog-category.type";
 import { IBlogCategoryService } from "./blog-category.interface";
-
-const prisma = new PrismaClient();
 
 export class BlogCategoryService implements IBlogCategoryService {
   // Helper method to generate slug from title
