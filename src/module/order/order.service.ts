@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { CreateOrderInput, UpdateOrderStatusInput, Order, PaginatedOrders, OrderStats, OrderQuery } from "./order.type";
-
-const prisma = new PrismaClient();
 
 export class OrderService {
   async getAllOrders(query: OrderQuery): Promise<PaginatedOrders> {
@@ -274,6 +272,75 @@ export class OrderService {
   async getUserOrders(userId: string, email: string, query: Omit<OrderQuery, 'userId'>): Promise<PaginatedOrders> {
     await this.claimGuestOrders(userId, email);
     return this.getAllOrders({ ...query, userId });
+  }
+
+  async getTopSellingTemplates(limit: number = 5) {
+    const orders = await prisma.orderInvoice.groupBy({
+      by: ['templateId'],
+      where: {
+        templateId: { not: null },
+        status: { in: ['COMPLETED', 'PROCESSING'] },
+      },
+      _count: { id: true },
+      _sum: { totalAmount: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: limit,
+    });
+
+    const templateIds = orders.map((o) => o.templateId).filter(Boolean) as string[];
+    const templates = await prisma.template.findMany({
+      where: { id: { in: templateIds } },
+      include: { category: { select: { title: true } } },
+    });
+
+    const templateMap = new Map(templates.map((t) => [t.id, t]));
+
+    const result = orders
+      .map((order) => {
+        const template = templateMap.get(order.templateId!);
+        if (!template) return null;
+        return {
+          template: {
+            id: template.id,
+            title: template.title,
+            price: template.price,
+            imageUrl: template.imageUrl,
+            shortDescription: template.shortDescription,
+            categoryName: template.category?.title || template.categoryName || undefined,
+          },
+          totalOrders: order._count.id,
+          totalRevenue: order._sum.totalAmount || 0,
+        };
+      })
+      .filter(Boolean);
+
+    // If fewer than limit orders, fill with top templates from DB
+    if (result.length < limit) {
+      const existingIds = new Set(result.map((r: any) => r.template.id));
+      const additionalTemplates = await prisma.template.findMany({
+        where: { id: { notIn: Array.from(existingIds) } },
+        take: limit - result.length,
+        orderBy: { downloads: 'desc' },
+        include: { category: { select: { title: true } } },
+      });
+
+      for (const t of additionalTemplates) {
+        result.push({
+          template: {
+            id: t.id,
+            title: t.title,
+            price: t.price,
+            imageUrl: t.imageUrl,
+            shortDescription: t.shortDescription,
+            categoryName: t.category?.title || t.categoryName || undefined,
+          },
+          totalOrders: t.totalPurchase || 0,
+          totalRevenue: (t.totalPurchase || 0) * t.price,
+        });
+      }
+    }
+
+    return result;
   }
 }
 
