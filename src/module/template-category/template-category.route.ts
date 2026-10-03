@@ -16,12 +16,14 @@ import {
   validateTemplateCategoryQuery,
 } from './template-category.validate';
 
+import { cacheResponse } from '../../middleware/cache';
+
 const router = Router();
 
-// Public routes
-router.get('/template-categories', validateTemplateCategoryQuery, getAllTemplateCategories);
-router.get('/template-categories/stats', getTemplateCategoryStats);
-router.get('/template-categories/:id', validateTemplateCategoryId, getTemplateCategoryById);
+// Public routes (cached for high performance)
+router.get('/template-categories', cacheResponse(60), validateTemplateCategoryQuery, getAllTemplateCategories);
+router.get('/template-categories/stats', cacheResponse(60), getTemplateCategoryStats);
+router.get('/template-categories/:id', cacheResponse(60), validateTemplateCategoryId, getTemplateCategoryById);
 
 // Admin routes
 router.post('/template-categories', authenticateAdminAndCheckStatus, (req: any, res: any, next: any) => {
