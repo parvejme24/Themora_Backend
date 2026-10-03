@@ -26,7 +26,10 @@ export declare const blogQuerySchema: z.ZodObject<{
     search: z.ZodOptional<z.ZodString>;
     categoryId: z.ZodOptional<z.ZodString>;
     authorId: z.ZodOptional<z.ZodString>;
-    isPublished: z.ZodOptional<z.ZodPipe<z.ZodString, z.ZodTransform<boolean, string>>>;
+    isPublished: z.ZodOptional<z.ZodPipe<z.ZodEnum<{
+        true: "true";
+        false: "false";
+    }>, z.ZodTransform<boolean, "true" | "false">>>;
     sortBy: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
         createdAt: "createdAt";
         updatedAt: "updatedAt";

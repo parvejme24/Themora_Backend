@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LicenseService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class LicenseService {
     async getAllLicenses(query) {
         const { page, limit, userId, templateId, licenseType, isActive, sortBy, sortOrder } = query;
@@ -23,7 +22,7 @@ class LicenseService {
         const orderBy = {};
         orderBy[sortBy] = sortOrder;
         const [licenses, total] = await Promise.all([
-            prisma.license.findMany({
+            database_1.prisma.license.findMany({
                 where,
                 skip,
                 take: limit,
@@ -55,7 +54,7 @@ class LicenseService {
                     },
                 },
             }),
-            prisma.license.count({ where }),
+            database_1.prisma.license.count({ where }),
         ]);
         const totalPages = Math.ceil(total / limit);
         return {
@@ -71,7 +70,7 @@ class LicenseService {
         };
     }
     async getLicenseById(id) {
-        const license = await prisma.license.findUnique({
+        const license = await database_1.prisma.license.findUnique({
             where: { id },
             include: {
                 order: {
@@ -104,7 +103,7 @@ class LicenseService {
     }
     async validateLicense(data) {
         const { licenseKey } = data;
-        const license = await prisma.license.findUnique({
+        const license = await database_1.prisma.license.findUnique({
             where: { licenseKey },
             include: {
                 order: {
@@ -173,7 +172,7 @@ class LicenseService {
         };
     }
     async revokeLicense(id, data) {
-        const license = await prisma.license.findUnique({
+        const license = await database_1.prisma.license.findUnique({
             where: { id },
         });
         if (!license) {
@@ -182,7 +181,7 @@ class LicenseService {
         if (!license.isActive) {
             return { success: false, message: "License is already revoked" };
         }
-        await prisma.license.update({
+        await database_1.prisma.license.update({
             where: { id },
             data: { isActive: false },
         });
@@ -190,19 +189,19 @@ class LicenseService {
     }
     async getLicenseStats() {
         const [totalLicenses, activeLicenses, expiredLicenses, licensesByType, licensesByTemplate,] = await Promise.all([
-            prisma.license.count(),
-            prisma.license.count({ where: { isActive: true } }),
-            prisma.license.count({
+            database_1.prisma.license.count(),
+            database_1.prisma.license.count({ where: { isActive: true } }),
+            database_1.prisma.license.count({
                 where: {
                     expiresAt: { lt: new Date() },
                 },
             }),
-            prisma.license.groupBy({
+            database_1.prisma.license.groupBy({
                 by: ['licenseType'],
                 _count: { id: true },
                 where: { isActive: true },
             }),
-            prisma.license.groupBy({
+            database_1.prisma.license.groupBy({
                 by: ['templateId'],
                 _count: { id: true },
                 where: { isActive: true },
@@ -214,7 +213,7 @@ class LicenseService {
             activeCount: item._count.id,
         }));
         const templateIds = licensesByTemplate.map(item => item.templateId);
-        const templates = await prisma.template.findMany({
+        const templates = await database_1.prisma.template.findMany({
             where: { id: { in: templateIds } },
             select: { id: true, title: true },
         });

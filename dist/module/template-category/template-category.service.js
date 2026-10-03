@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TemplateCategoryService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class TemplateCategoryService {
     async createTemplateCategory(data) {
         try {
@@ -11,7 +10,7 @@ class TemplateCategoryService {
             if (!isUnique) {
                 throw new Error("Slug already exists");
             }
-            const category = await prisma.templateCategory.create({
+            const category = await database_1.prisma.templateCategory.create({
                 data: {
                     title: data.title,
                     slug,
@@ -49,7 +48,7 @@ class TemplateCategoryService {
                 ];
             }
             const [categories, total] = await Promise.all([
-                prisma.templateCategory.findMany({
+                database_1.prisma.templateCategory.findMany({
                     where,
                     skip,
                     take: limit,
@@ -71,7 +70,7 @@ class TemplateCategoryService {
                         [sortBy]: sortOrder,
                     },
                 }),
-                prisma.templateCategory.count({ where }),
+                database_1.prisma.templateCategory.count({ where }),
             ]);
             const totalPages = Math.ceil(total / limit);
             return {
@@ -92,7 +91,7 @@ class TemplateCategoryService {
     }
     async getTemplateCategoryById(id) {
         try {
-            const category = await prisma.templateCategory.findUnique({
+            const category = await database_1.prisma.templateCategory.findUnique({
                 where: { id },
                 include: {
                     templates: {
@@ -117,7 +116,7 @@ class TemplateCategoryService {
     }
     async updateTemplateCategory(id, data) {
         try {
-            const existingCategory = await prisma.templateCategory.findUnique({
+            const existingCategory = await database_1.prisma.templateCategory.findUnique({
                 where: { id },
             });
             if (!existingCategory) {
@@ -133,7 +132,7 @@ class TemplateCategoryService {
                     throw new Error("Slug already exists");
                 }
             }
-            const category = await prisma.templateCategory.update({
+            const category = await database_1.prisma.templateCategory.update({
                 where: { id },
                 data: {
                     ...data,
@@ -162,7 +161,7 @@ class TemplateCategoryService {
     }
     async deleteTemplateCategory(id) {
         try {
-            const category = await prisma.templateCategory.findUnique({
+            const category = await database_1.prisma.templateCategory.findUnique({
                 where: { id },
                 include: {
                     templates: true,
@@ -180,7 +179,7 @@ class TemplateCategoryService {
                     message: "Cannot delete category with existing templates",
                 };
             }
-            await prisma.templateCategory.delete({
+            await database_1.prisma.templateCategory.delete({
                 where: { id },
             });
             return {
@@ -195,9 +194,9 @@ class TemplateCategoryService {
     async getTemplateCategoryStats() {
         try {
             const [totalCategories, totalTemplates, categoriesWithTemplates] = await Promise.all([
-                prisma.templateCategory.count(),
-                prisma.template.count(),
-                prisma.templateCategory.findMany({
+                database_1.prisma.templateCategory.count(),
+                database_1.prisma.template.count(),
+                database_1.prisma.templateCategory.findMany({
                     include: {
                         _count: {
                             select: {
@@ -235,7 +234,7 @@ class TemplateCategoryService {
             if (excludeId) {
                 where.id = { not: excludeId };
             }
-            const existing = await prisma.templateCategory.findFirst({
+            const existing = await database_1.prisma.templateCategory.findFirst({
                 where,
             });
             return !existing;

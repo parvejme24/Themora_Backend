@@ -1,4 +1,4 @@
-export declare function sendOtpEmail(to: string, otp: string): Promise<void>;
+export declare function sendOtpEmail(to: string, otp: string, purpose?: "registration" | "password reset"): Promise<void>;
 export declare function sendContactNotification(contact: {
     fullName: string;
     email: string;

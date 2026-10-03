@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserOrders = exports.getOrderStats = exports.updateOrderStatus = exports.createOrder = exports.getOrderById = exports.getAllOrders = void 0;
+exports.getTopSellingTemplates = exports.getUserOrders = exports.getOrderStats = exports.updateOrderStatus = exports.createOrder = exports.getOrderById = exports.getAllOrders = void 0;
 const order_service_1 = require("./order.service");
 const orderService = new order_service_1.OrderService();
 const getAllOrders = async (req, res) => {
@@ -165,4 +165,24 @@ const getUserOrders = async (req, res) => {
     }
 };
 exports.getUserOrders = getUserOrders;
+const getTopSellingTemplates = async (req, res) => {
+    try {
+        const limit = Number(req.query.limit) || 5;
+        const result = await orderService.getTopSellingTemplates(limit);
+        return res.status(200).json({
+            success: true,
+            message: "Top selling templates fetched successfully",
+            data: result,
+        });
+    }
+    catch (error) {
+        console.error("Error fetching top selling templates:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch top selling templates",
+            error: error.message,
+        });
+    }
+};
+exports.getTopSellingTemplates = getTopSellingTemplates;
 //# sourceMappingURL=order.controller.js.map

@@ -25,11 +25,11 @@ exports.createBlogReviewReplySchema = zod_1.z.object({
     photoUrl: zod_1.z.string().url("Invalid photo URL").optional(),
 });
 exports.blogReviewQuerySchema = zod_1.z.object({
-    page: zod_1.z.string().transform(Number).pipe(zod_1.z.number().min(1)).optional().default(1),
-    limit: zod_1.z.string().transform(Number).pipe(zod_1.z.number().min(1).max(100)).optional().default(10),
+    page: zod_1.z.coerce.number().min(1).optional().default(1),
+    limit: zod_1.z.coerce.number().min(1).max(100).optional().default(10),
     blogId: zod_1.z.string().uuid("Invalid blog ID").optional(),
     userId: zod_1.z.string().uuid("Invalid user ID").optional(),
-    rating: zod_1.z.string().transform(Number).pipe(zod_1.z.number().min(1).max(5)).optional(),
+    rating: zod_1.z.coerce.number().min(1).max(5).optional(),
     sortBy: zod_1.z.enum(['createdAt', 'rating', 'updatedAt']).optional().default('createdAt'),
     sortOrder: zod_1.z.enum(['asc', 'desc']).optional().default('desc'),
 });

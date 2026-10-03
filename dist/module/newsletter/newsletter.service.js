@@ -1,12 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NewsletterService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class NewsletterService {
     async subscribeNewsletter(email, userId) {
         try {
-            const existingSubscriber = await prisma.newsletter.findUnique({
+            const existingSubscriber = await database_1.prisma.newsletter.findUnique({
                 where: { email },
                 include: {
                     user: {
@@ -24,7 +23,7 @@ class NewsletterService {
                     throw new Error("Email is already subscribed to newsletter");
                 }
                 else {
-                    const reactivatedSubscriber = await prisma.newsletter.update({
+                    const reactivatedSubscriber = await database_1.prisma.newsletter.update({
                         where: { email },
                         data: {
                             isActive: true,
@@ -45,7 +44,7 @@ class NewsletterService {
                     return reactivatedSubscriber;
                 }
             }
-            const newSubscriber = await prisma.newsletter.create({
+            const newSubscriber = await database_1.prisma.newsletter.create({
                 data: {
                     email,
                     userId,
@@ -70,7 +69,7 @@ class NewsletterService {
     }
     async getAllSubscribers() {
         try {
-            const subscribers = await prisma.newsletter.findMany({
+            const subscribers = await database_1.prisma.newsletter.findMany({
                 include: {
                     user: {
                         select: {
@@ -91,7 +90,7 @@ class NewsletterService {
     }
     async deleteSubscriber(id) {
         try {
-            const subscriber = await prisma.newsletter.findUnique({
+            const subscriber = await database_1.prisma.newsletter.findUnique({
                 where: { id },
             });
             if (!subscriber) {
@@ -100,7 +99,7 @@ class NewsletterService {
                     message: "Newsletter subscriber not found",
                 };
             }
-            await prisma.newsletter.delete({
+            await database_1.prisma.newsletter.delete({
                 where: { id },
             });
             return {
@@ -143,12 +142,12 @@ class NewsletterService {
                     lte: new Date(endDate),
                 };
             }
-            const totalSubscribers = await prisma.newsletter.count();
-            const activeSubscribers = await prisma.newsletter.count({
+            const totalSubscribers = await database_1.prisma.newsletter.count();
+            const activeSubscribers = await database_1.prisma.newsletter.count({
                 where: { isActive: true },
             });
             const inactiveSubscribers = totalSubscribers - activeSubscribers;
-            const periodData = await prisma.newsletter.groupBy({
+            const periodData = await database_1.prisma.newsletter.groupBy({
                 by: ["createdAt"],
                 where: {
                     createdAt: dateFilter,
@@ -160,7 +159,7 @@ class NewsletterService {
                     createdAt: "asc",
                 },
             });
-            const previousPeriodCount = await prisma.newsletter.count({
+            const previousPeriodCount = await database_1.prisma.newsletter.count({
                 where: {
                     createdAt: {
                         gte: new Date(now.getTime() - 2 * 30 * 24 * 60 * 60 * 1000),
@@ -168,7 +167,7 @@ class NewsletterService {
                     },
                 },
             });
-            const currentPeriodCount = await prisma.newsletter.count({
+            const currentPeriodCount = await database_1.prisma.newsletter.count({
                 where: {
                     createdAt: {
                         gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),

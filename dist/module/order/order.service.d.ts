@@ -7,5 +7,17 @@ export declare class OrderService {
     getOrderStats(): Promise<OrderStats>;
     claimGuestOrders(userId: string, email: string): Promise<void>;
     getUserOrders(userId: string, email: string, query: Omit<OrderQuery, 'userId'>): Promise<PaginatedOrders>;
+    getTopSellingTemplates(limit?: number): Promise<({
+        template: {
+            id: string;
+            title: string;
+            price: number;
+            imageUrl: string | null;
+            shortDescription: string;
+            categoryName: string | undefined;
+        };
+        totalOrders: number;
+        totalRevenue: number;
+    } | null)[]>;
 }
 //# sourceMappingURL=order.service.d.ts.map

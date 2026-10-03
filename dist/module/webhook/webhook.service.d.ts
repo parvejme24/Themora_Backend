@@ -4,6 +4,8 @@ export declare class WebhookService {
     processOrderCreated(payload: LemonSqueezyWebhookPayload): Promise<WebhookProcessingResult>;
     processOrderUpdated(payload: LemonSqueezyWebhookPayload): Promise<WebhookProcessingResult>;
     private mapLemonSqueezyStatus;
+    verifyFastSpringSignature(payload: Buffer, signature: string): boolean;
+    processFastSpringWebhook(body: any): Promise<WebhookProcessingResult>;
     private determineLicenseType;
     private generateLicenseKey;
 }

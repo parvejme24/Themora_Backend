@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blogCategoryService = exports.BlogCategoryService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class BlogCategoryService {
     generateSlug(title) {
         const slug = title
@@ -25,8 +24,8 @@ class BlogCategoryService {
             }
             : {};
         const [total, items] = await Promise.all([
-            prisma.blogCategory.count({ where }),
-            prisma.blogCategory.findMany({
+            database_1.prisma.blogCategory.count({ where }),
+            database_1.prisma.blogCategory.findMany({
                 where,
                 skip,
                 take: limit,
@@ -47,7 +46,7 @@ class BlogCategoryService {
         };
     }
     async getBlogCategoryById(id) {
-        const category = await prisma.blogCategory.findUnique({
+        const category = await database_1.prisma.blogCategory.findUnique({
             where: { id },
         });
         return category;
@@ -61,7 +60,7 @@ class BlogCategoryService {
         if (imageUrl)
             payload.imageUrl = imageUrl;
         console.log("Service payload:", payload);
-        const created = await prisma.blogCategory.create({ data: payload });
+        const created = await database_1.prisma.blogCategory.create({ data: payload });
         return created;
     }
     async updateBlogCategory(id, data, imageUrl) {
@@ -71,11 +70,11 @@ class BlogCategoryService {
         }
         if (imageUrl)
             payload.imageUrl = imageUrl;
-        const updated = await prisma.blogCategory.update({ where: { id }, data: payload });
+        const updated = await database_1.prisma.blogCategory.update({ where: { id }, data: payload });
         return updated;
     }
     async deleteBlogCategory(id) {
-        await prisma.blogCategory.delete({ where: { id } });
+        await database_1.prisma.blogCategory.delete({ where: { id } });
     }
 }
 exports.BlogCategoryService = BlogCategoryService;

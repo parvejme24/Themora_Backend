@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blogService = exports.BlogService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class BlogService {
     async getAllBlogs(query) {
         const { page = 1, limit = 10, search, categoryId, authorId, isPublished, sortBy = 'createdAt', sortOrder = 'desc' } = query;
@@ -26,7 +25,7 @@ class BlogService {
         const orderBy = {};
         orderBy[sortBy] = sortOrder;
         const [blogs, total] = await Promise.all([
-            prisma.blog.findMany({
+            database_1.prisma.blog.findMany({
                 where,
                 skip,
                 take: limit,
@@ -72,7 +71,7 @@ class BlogService {
                     },
                 },
             }),
-            prisma.blog.count({ where }),
+            database_1.prisma.blog.count({ where }),
         ]);
         const totalPages = Math.ceil(total / limit);
         return {
@@ -88,7 +87,7 @@ class BlogService {
         };
     }
     async getBlogById(id) {
-        const blog = await prisma.blog.findUnique({
+        const blog = await database_1.prisma.blog.findUnique({
             where: { id },
             include: {
                 author: {
@@ -145,7 +144,7 @@ class BlogService {
         else {
             slug = await this.generateUniqueSlug(slug);
         }
-        const blog = await prisma.blog.create({
+        const blog = await database_1.prisma.blog.create({
             data: {
                 ...data,
                 slug,
@@ -176,7 +175,7 @@ class BlogService {
         return blog;
     }
     async updateBlog(id, data) {
-        const existingBlog = await prisma.blog.findUnique({
+        const existingBlog = await database_1.prisma.blog.findUnique({
             where: { id },
             select: { categoryId: true, slug: true },
         });
@@ -190,7 +189,7 @@ class BlogService {
         else if (data.slug && data.slug !== existingBlog.slug) {
             updateData.slug = await this.generateUniqueSlug(data.slug);
         }
-        const blog = await prisma.blog.update({
+        const blog = await database_1.prisma.blog.update({
             where: { id },
             data: updateData,
             include: {
@@ -224,14 +223,14 @@ class BlogService {
         return blog;
     }
     async deleteBlog(id) {
-        const existingBlog = await prisma.blog.findUnique({
+        const existingBlog = await database_1.prisma.blog.findUnique({
             where: { id },
             select: { categoryId: true },
         });
         if (!existingBlog) {
             return false;
         }
-        await prisma.blog.delete({
+        await database_1.prisma.blog.delete({
             where: { id },
         });
         await this.updateCategoryBlogCount(existingBlog.categoryId);
@@ -245,23 +244,23 @@ class BlogService {
     }
     async getBlogStats() {
         const [totalBlogs, publishedBlogs, draftBlogs, totalViews, totalLikes, averageReadingTime, blogsByCategory, blogsByAuthor,] = await Promise.all([
-            prisma.blog.count(),
-            prisma.blog.count({ where: { isPublished: true } }),
-            prisma.blog.count({ where: { isPublished: false } }),
-            prisma.blog.aggregate({
+            database_1.prisma.blog.count(),
+            database_1.prisma.blog.count({ where: { isPublished: true } }),
+            database_1.prisma.blog.count({ where: { isPublished: false } }),
+            database_1.prisma.blog.aggregate({
                 _sum: { viewCount: true },
             }),
-            prisma.blog.aggregate({
+            database_1.prisma.blog.aggregate({
                 _sum: { reactCount: true },
             }),
-            prisma.blog.aggregate({
+            database_1.prisma.blog.aggregate({
                 _avg: { readingTime: true },
             }),
-            prisma.blog.groupBy({
+            database_1.prisma.blog.groupBy({
                 by: ['categoryId'],
                 _count: { id: true },
             }),
-            prisma.blog.groupBy({
+            database_1.prisma.blog.groupBy({
                 by: ['authorId'],
                 _count: { id: true },
             }),
@@ -290,7 +289,7 @@ class BlogService {
         if (!userId) {
             return;
         }
-        await prisma.blog.update({
+        await database_1.prisma.blog.update({
             where: { id },
             data: {
                 viewCount: {
@@ -300,7 +299,7 @@ class BlogService {
         });
     }
     async toggleLike(blogId, userId) {
-        const existingLike = await prisma.blogLike.findUnique({
+        const existingLike = await database_1.prisma.blogLike.findUnique({
             where: {
                 blogId_userId: {
                     blogId,
@@ -309,7 +308,7 @@ class BlogService {
             },
         });
         if (existingLike) {
-            await prisma.blogLike.delete({
+            await database_1.prisma.blogLike.delete({
                 where: {
                     blogId_userId: {
                         blogId,
@@ -317,32 +316,32 @@ class BlogService {
                     },
                 },
             });
-            const likeCount = await prisma.blogLike.count({
+            const likeCount = await database_1.prisma.blogLike.count({
                 where: { blogId },
             });
             return { liked: false, likes: likeCount };
         }
         else {
-            await prisma.blogLike.create({
+            await database_1.prisma.blogLike.create({
                 data: {
                     blogId,
                     userId,
                 },
             });
-            const likeCount = await prisma.blogLike.count({
+            const likeCount = await database_1.prisma.blogLike.count({
                 where: { blogId },
             });
             return { liked: true, likes: likeCount };
         }
     }
     async getBlogLikesCount(blogId) {
-        const count = await prisma.blogLike.count({
+        const count = await database_1.prisma.blogLike.count({
             where: { blogId },
         });
         return count;
     }
     async addReaction(blogId, userId, reactionType) {
-        const existingReaction = await prisma.blogReaction.findUnique({
+        const existingReaction = await database_1.prisma.blogReaction.findUnique({
             where: {
                 blogId_userId: {
                     blogId,
@@ -352,7 +351,7 @@ class BlogService {
         });
         if (existingReaction) {
             if (existingReaction.reactionType === reactionType) {
-                await prisma.blogReaction.delete({
+                await database_1.prisma.blogReaction.delete({
                     where: {
                         blogId_userId: {
                             blogId,
@@ -360,7 +359,7 @@ class BlogService {
                         },
                     },
                 });
-                await prisma.blog.update({
+                await database_1.prisma.blog.update({
                     where: { id: blogId },
                     data: {
                         reactCount: {
@@ -368,14 +367,14 @@ class BlogService {
                         },
                     },
                 });
-                const updatedBlog = await prisma.blog.findUnique({
+                const updatedBlog = await database_1.prisma.blog.findUnique({
                     where: { id: blogId },
                     select: { reactCount: true },
                 });
                 return { reaction: null, reactCount: updatedBlog?.reactCount || 0 };
             }
             else {
-                await prisma.blogReaction.update({
+                await database_1.prisma.blogReaction.update({
                     where: {
                         blogId_userId: {
                             blogId,
@@ -386,11 +385,11 @@ class BlogService {
                         reactionType,
                     },
                 });
-                const updatedBlog = await prisma.blog.findUnique({
+                const updatedBlog = await database_1.prisma.blog.findUnique({
                     where: { id: blogId },
                     select: { reactCount: true },
                 });
-                const reaction = await prisma.blogReaction.findUnique({
+                const reaction = await database_1.prisma.blogReaction.findUnique({
                     where: {
                         blogId_userId: {
                             blogId,
@@ -402,14 +401,14 @@ class BlogService {
             }
         }
         else {
-            await prisma.blogReaction.create({
+            await database_1.prisma.blogReaction.create({
                 data: {
                     blogId,
                     userId,
                     reactionType,
                 },
             });
-            await prisma.blog.update({
+            await database_1.prisma.blog.update({
                 where: { id: blogId },
                 data: {
                     reactCount: {
@@ -417,11 +416,11 @@ class BlogService {
                     },
                 },
             });
-            const updatedBlog = await prisma.blog.findUnique({
+            const updatedBlog = await database_1.prisma.blog.findUnique({
                 where: { id: blogId },
                 select: { reactCount: true },
             });
-            const reaction = await prisma.blogReaction.findUnique({
+            const reaction = await database_1.prisma.blogReaction.findUnique({
                 where: {
                     blogId_userId: {
                         blogId,
@@ -433,7 +432,7 @@ class BlogService {
         }
     }
     async getBlogReactions(blogId) {
-        const reactions = await prisma.blogReaction.findMany({
+        const reactions = await database_1.prisma.blogReaction.findMany({
             where: { blogId },
             include: {
                 user: {
@@ -456,7 +455,7 @@ class BlogService {
         return reactions;
     }
     async getUserReaction(blogId, userId) {
-        const reaction = await prisma.blogReaction.findUnique({
+        const reaction = await database_1.prisma.blogReaction.findUnique({
             where: {
                 blogId_userId: {
                     blogId,
@@ -467,7 +466,7 @@ class BlogService {
         return reaction;
     }
     async updateBlogStatus(id, isPublished) {
-        const blog = await prisma.blog.update({
+        const blog = await database_1.prisma.blog.update({
             where: { id },
             data: { isPublished },
             include: {
@@ -491,11 +490,11 @@ class BlogService {
         return blog;
     }
     async togglePublish(id) {
-        const existing = await prisma.blog.findUnique({ where: { id }, select: { isPublished: true } });
+        const existing = await database_1.prisma.blog.findUnique({ where: { id }, select: { isPublished: true } });
         if (!existing) {
             return null;
         }
-        const blog = await prisma.blog.update({
+        const blog = await database_1.prisma.blog.update({
             where: { id },
             data: { isPublished: !existing.isPublished },
             include: {
@@ -517,10 +516,10 @@ class BlogService {
         return blog;
     }
     async updateCategoryBlogCount(categoryId) {
-        const count = await prisma.blog.count({
+        const count = await database_1.prisma.blog.count({
             where: { categoryId },
         });
-        await prisma.blogCategory.update({
+        await database_1.prisma.blogCategory.update({
             where: { id: categoryId },
             data: { blogCount: count },
         });
@@ -540,7 +539,7 @@ class BlogService {
         let slug = baseSlugGenerated;
         let counter = 1;
         while (true) {
-            const existingBlog = await prisma.blog.findUnique({
+            const existingBlog = await database_1.prisma.blog.findUnique({
                 where: { slug },
                 select: { id: true },
             });

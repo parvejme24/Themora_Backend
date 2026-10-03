@@ -2,19 +2,27 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prisma = exports.disconnectDatabase = exports.connectDatabase = void 0;
 const client_1 = require("@prisma/client");
-const env_1 = require("./env");
 const prisma = new client_1.PrismaClient({
-    log: env_1.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+    log: ['warn', 'error'],
 });
 exports.prisma = prisma;
 const connectDatabase = async () => {
-    try {
-        await prisma.$connect();
-        console.log('✅ Database connected successfully');
-    }
-    catch (error) {
-        console.error('❌ Database connection failed:', error);
-        process.exit(1);
+    let attempts = 0;
+    const maxAttempts = 3;
+    while (attempts < maxAttempts) {
+        try {
+            attempts++;
+            await prisma.$connect();
+            console.log('✅ Database connected successfully');
+            return;
+        }
+        catch (error) {
+            console.error(`❌ Database connection attempt ${attempts} failed:`, error);
+            if (attempts >= maxAttempts) {
+                process.exit(1);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
     }
 };
 exports.connectDatabase = connectDatabase;

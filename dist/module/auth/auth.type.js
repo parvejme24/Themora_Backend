@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logoutSchema = exports.resendOtpSchema = exports.verifyOtpSchema = exports.sessionValidationSchema = exports.userIdSchema = exports.userQuerySchema = exports.updateProfileSchema = exports.changePasswordSchema = exports.nextAuthSessionSchema = exports.googleLoginSchema = exports.loginUserSchema = exports.registerUserSchema = void 0;
+exports.logoutSchema = exports.resetPasswordWithOtpSchema = exports.verifyPasswordResetOtpSchema = exports.requestPasswordResetSchema = exports.resendOtpSchema = exports.verifyOtpSchema = exports.sessionValidationSchema = exports.userIdSchema = exports.userQuerySchema = exports.updateProfileSchema = exports.changePasswordSchema = exports.nextAuthSessionSchema = exports.googleLoginSchema = exports.loginUserSchema = exports.registerUserSchema = void 0;
 const zod_1 = require("zod");
 exports.registerUserSchema = zod_1.z.object({
     fullName: zod_1.z.string().min(2, "Full name must be at least 2 characters").max(100, "Full name must be less than 100 characters"),
@@ -64,6 +64,15 @@ exports.verifyOtpSchema = zod_1.z.object({
 });
 exports.resendOtpSchema = zod_1.z.object({
     email: zod_1.z.string().email("Invalid email address"),
+});
+exports.requestPasswordResetSchema = zod_1.z.object({
+    email: zod_1.z.string().email("Invalid email address"),
+});
+exports.verifyPasswordResetOtpSchema = exports.verifyOtpSchema;
+exports.resetPasswordWithOtpSchema = zod_1.z.object({
+    email: zod_1.z.string().email("Invalid email address"),
+    otp: zod_1.z.string().length(6, "OTP must be 6 digits"),
+    newPassword: zod_1.z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
 });
 exports.logoutSchema = zod_1.z.object({
     nextAuthSecret: zod_1.z.string().min(1, "NextAuth secret is required"),

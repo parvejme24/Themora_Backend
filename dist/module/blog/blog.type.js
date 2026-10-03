@@ -41,7 +41,7 @@ exports.blogQuerySchema = zod_1.z.object({
     search: zod_1.z.string().optional(),
     categoryId: zod_1.z.string().uuid("Invalid category ID").optional(),
     authorId: zod_1.z.string().uuid("Invalid author ID").optional(),
-    isPublished: zod_1.z.string().transform(Boolean).optional(),
+    isPublished: zod_1.z.enum(["true", "false"]).transform((value) => value === "true").optional(),
     sortBy: zod_1.z.enum(['createdAt', 'updatedAt', 'reactCount', 'viewCount', 'readingTime']).optional().default('createdAt'),
     sortOrder: zod_1.z.enum(['asc', 'desc']).optional().default('desc'),
 });

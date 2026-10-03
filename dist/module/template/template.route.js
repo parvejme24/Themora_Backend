@@ -5,11 +5,12 @@ const template_controller_1 = require("./template.controller");
 const cloudinary_upload_1 = require("../../middleware/cloudinary-upload");
 const authMiddleware_1 = require("../../middleware/authMiddleware");
 const template_validate_1 = require("./template.validate");
+const cache_1 = require("../../middleware/cache");
 const router = (0, express_1.Router)();
-router.get('/templates', authMiddleware_1.optionalAuth, template_validate_1.validateTemplateQuery, template_controller_1.getAllTemplates);
-router.get('/templates/new-arrivals', authMiddleware_1.optionalAuth, template_validate_1.validateNewArrivalsQuery, template_controller_1.getNewArrivals);
-router.get('/templates/stats', template_controller_1.getTemplateStats);
-router.get('/templates/:id', authMiddleware_1.optionalAuth, template_validate_1.validateTemplateId, template_controller_1.getTemplateById);
+router.get('/templates', (0, cache_1.cacheResponse)(30), authMiddleware_1.optionalAuth, template_validate_1.validateTemplateQuery, template_controller_1.getAllTemplates);
+router.get('/templates/new-arrivals', (0, cache_1.cacheResponse)(30), authMiddleware_1.optionalAuth, template_validate_1.validateNewArrivalsQuery, template_controller_1.getNewArrivals);
+router.get('/templates/stats', (0, cache_1.cacheResponse)(60), template_controller_1.getTemplateStats);
+router.get('/templates/:id', (0, cache_1.cacheResponse)(30), authMiddleware_1.optionalAuth, template_validate_1.validateTemplateId, template_controller_1.getTemplateById);
 router.post('/templates', authMiddleware_1.authenticateAdminAndCheckStatus, (req, res, next) => {
     if (req.headers['content-type']?.includes('multipart/form-data')) {
         cloudinary_upload_1.uploadTemplateImageCloudinary(req, res, (err) => {

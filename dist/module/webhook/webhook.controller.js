@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testWebhook = exports.handleLemonSqueezyWebhook = void 0;
+exports.testWebhook = exports.handleFastSpringWebhook = exports.handleLemonSqueezyWebhook = void 0;
 const webhook_service_1 = require("./webhook.service");
 const webhook_type_1 = require("./webhook.type");
 const webhookService = new webhook_service_1.WebhookService();
@@ -66,6 +66,27 @@ const handleLemonSqueezyWebhook = async (req, res) => {
     }
 };
 exports.handleLemonSqueezyWebhook = handleLemonSqueezyWebhook;
+const handleFastSpringWebhook = async (req, res) => {
+    try {
+        const signature = (req.headers["x-fs-signature"] || req.headers["x-signature"]);
+        const rawPayload = req.rawBody;
+        if (rawPayload && signature && !webhookService.verifyFastSpringSignature(rawPayload, signature)) {
+            console.warn("FastSpring webhook signature mismatch");
+        }
+        const result = await webhookService.processFastSpringWebhook(req.body);
+        if (result.success) {
+            return res.status(200).json({ success: true, message: result.message });
+        }
+        else {
+            return res.status(400).json({ success: false, message: result.message, error: result.error });
+        }
+    }
+    catch (error) {
+        console.error("Error processing FastSpring webhook:", error);
+        return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+};
+exports.handleFastSpringWebhook = handleFastSpringWebhook;
 const testWebhook = async (req, res) => {
     try {
         return res.status(200).json({

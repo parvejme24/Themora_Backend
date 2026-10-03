@@ -340,9 +340,19 @@ CLOUDINARY_URL=""
 LEMONSQUEEZY_API_KEY="your-api-key"
 LEMONSQUEEZY_STORE_ID="your-store-id"
 LEMONSQUEEZY_WEBHOOK_SECRET="your-webhook-secret"
+
+# Optional local-only demo account overrides
+DEMO_USER_EMAIL="demo@themora.test"
+DEMO_USER_PASSWORD="ThemoraDemo!2026"
 ```
 
 This repository uses `prisma db push` rather than a tracked migration baseline. After pulling schema changes, run `npx prisma db push` and `npx prisma generate`. Then configure a Lemon Squeezy variant ID on each pricing plan and theme in the admin dashboard; the variant prices should match the displayed prices. Contact notifications are sent to `CONTACT_NOTIFICATION_EMAIL` (or `SMTP_USER` if it is unset).
+
+### Local Demo Account
+
+Run `npm run seed:demo` from the backend directory to create or reset a verified regular user. Defaults are `demo@themora.test` / `ThemoraDemo!2026`; override them with `DEMO_USER_EMAIL` and `DEMO_USER_PASSWORD`. The command refuses production and requires `ALLOW_REMOTE_DEMO_SEED=true` for non-local databases. Do not use the sample password for a public or production account.
+
+To promote the reserved demo user, run `npm run promote:demo-admin`. The command rotates its password, revokes existing sessions, and prints a new random password once. Remote databases require `ALLOW_REMOTE_ADMIN_SEED=true`; production is always blocked. The `.test` email cannot receive password-reset emails, so use a real administrator email for a deployed site.
 
 ---
 

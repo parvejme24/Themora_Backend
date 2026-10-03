@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TemplateService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class TemplateService {
     async getAllTemplates(query) {
         const { page, limit, search, categoryId, sortBy, sortOrder, minPrice, maxPrice } = query;
@@ -28,7 +27,7 @@ class TemplateService {
         const orderBy = {};
         orderBy[sortBy] = sortOrder;
         const [templates, total] = await Promise.all([
-            prisma.template.findMany({
+            database_1.prisma.template.findMany({
                 where,
                 skip,
                 take: limit,
@@ -45,7 +44,7 @@ class TemplateService {
                     links: true,
                 },
             }),
-            prisma.template.count({ where }),
+            database_1.prisma.template.count({ where }),
         ]);
         const totalPages = Math.ceil(total / limit);
         return {
@@ -61,7 +60,7 @@ class TemplateService {
         };
     }
     async getTemplateById(id) {
-        const template = await prisma.template.findUnique({
+        const template = await database_1.prisma.template.findUnique({
             where: { id },
             include: {
                 category: {
@@ -78,7 +77,7 @@ class TemplateService {
         return template;
     }
     async createTemplate(data) {
-        const template = await prisma.template.create({
+        const template = await database_1.prisma.template.create({
             data: {
                 ...data,
                 screenshots: data.screenshots || [],
@@ -100,21 +99,21 @@ class TemplateService {
                 links: true,
             },
         });
-        await prisma.templateCategory.update({
+        await database_1.prisma.templateCategory.update({
             where: { id: data.categoryId },
             data: { templateCount: { increment: 1 } },
         });
         return template;
     }
     async updateTemplate(id, data) {
-        const existingTemplate = await prisma.template.findUnique({
+        const existingTemplate = await database_1.prisma.template.findUnique({
             where: { id },
             select: { categoryId: true },
         });
         if (!existingTemplate) {
             return null;
         }
-        const template = await prisma.template.update({
+        const template = await database_1.prisma.template.update({
             where: { id },
             data,
             include: {
@@ -131,11 +130,11 @@ class TemplateService {
         });
         if (data.categoryId && data.categoryId !== existingTemplate.categoryId) {
             await Promise.all([
-                prisma.templateCategory.update({
+                database_1.prisma.templateCategory.update({
                     where: { id: existingTemplate.categoryId },
                     data: { templateCount: { decrement: 1 } },
                 }),
-                prisma.templateCategory.update({
+                database_1.prisma.templateCategory.update({
                     where: { id: data.categoryId },
                     data: { templateCount: { increment: 1 } },
                 }),
@@ -144,24 +143,24 @@ class TemplateService {
         return template;
     }
     async deleteTemplate(id) {
-        const template = await prisma.template.findUnique({
+        const template = await database_1.prisma.template.findUnique({
             where: { id },
             select: { categoryId: true },
         });
         if (!template) {
             return { success: false, message: "Template not found" };
         }
-        await prisma.template.delete({
+        await database_1.prisma.template.delete({
             where: { id },
         });
-        await prisma.templateCategory.update({
+        await database_1.prisma.templateCategory.update({
             where: { id: template.categoryId },
             data: { templateCount: { decrement: 1 } },
         });
         return { success: true, message: "Template deleted successfully" };
     }
     async getNewArrivals(limit = 20) {
-        const templates = await prisma.template.findMany({
+        const templates = await database_1.prisma.template.findMany({
             take: limit,
             orderBy: {
                 createdAt: 'desc',
@@ -182,17 +181,17 @@ class TemplateService {
     }
     async getTemplateStats() {
         const [totalTemplates, totalDownloads, totalPurchases, averagePrice, categoryStats,] = await Promise.all([
-            prisma.template.count(),
-            prisma.template.aggregate({
+            database_1.prisma.template.count(),
+            database_1.prisma.template.aggregate({
                 _sum: { downloads: true },
             }),
-            prisma.template.aggregate({
+            database_1.prisma.template.aggregate({
                 _sum: { totalPurchase: true },
             }),
-            prisma.template.aggregate({
+            database_1.prisma.template.aggregate({
                 _avg: { price: true },
             }),
-            prisma.templateCategory.findMany({
+            database_1.prisma.templateCategory.findMany({
                 select: {
                     id: true,
                     title: true,

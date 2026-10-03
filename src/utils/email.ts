@@ -4,14 +4,14 @@ import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM, CONTACT_NOTIFIC
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: Number(SMTP_PORT) || 587,
-  secure: false,
+  secure: Number(SMTP_PORT) === 465,
   auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
 });
 
-export async function sendOtpEmail(to: string, otp: string): Promise<void> {
-  const subject = "Your OTP Code";
-  const text = `Your OTP code is ${otp}. It will expire in 10 minutes.`;
-  const html = `<p>Your OTP code is <b>${otp}</b>. It will expire in 10 minutes.</p>`;
+export async function sendOtpEmail(to: string, otp: string, purpose: "registration" | "password reset" = "registration"): Promise<void> {
+  const subject = purpose === "password reset" ? "Reset your Themora password" : "Verify your Themora account";
+  const text = `Your ${purpose} code is ${otp}. It will expire in 10 minutes.`;
+  const html = `<p>Your ${purpose} code is <b>${otp}</b>. It will expire in 10 minutes.</p>`;
 
   await transporter.sendMail({
     from: EMAIL_FROM || SMTP_USER,

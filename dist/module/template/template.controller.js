@@ -34,19 +34,18 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getTemplateStats = exports.getNewArrivals = exports.downloadSourceFile = exports.deleteTemplate = exports.updateTemplate = exports.createTemplate = exports.getTemplateById = exports.getAllTemplates = void 0;
-const client_1 = require("@prisma/client");
+const database_1 = require("../../config/database");
 const template_service_1 = require("./template.service");
 const order_service_1 = require("../order/order.service");
 const templateService = new template_service_1.TemplateService();
-const prisma = new client_1.PrismaClient();
 const orderService = new order_service_1.OrderService();
 const userHasTemplateAccess = async (userId, templateId) => {
     const [license, planEntitlement] = await Promise.all([
-        prisma.license.findFirst({
+        database_1.prisma.license.findFirst({
             where: { userId, templateId, isActive: true, order: { status: "COMPLETED" } },
             select: { id: true },
         }),
-        prisma.planEntitlement.findFirst({
+        database_1.prisma.planEntitlement.findFirst({
             where: { userId, isActive: true, order: { status: "COMPLETED" } },
             select: { id: true },
         }),

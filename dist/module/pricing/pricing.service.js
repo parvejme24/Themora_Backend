@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.pricingService = exports.PricingService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 const defaultPlans = [
     {
         slug: "personal",
@@ -46,7 +45,7 @@ const defaultPlans = [
 ];
 class PricingService {
     async ensureDefaultPlans() {
-        await Promise.all(defaultPlans.map((plan) => prisma.pricingPlan.upsert({
+        await Promise.all(defaultPlans.map((plan) => database_1.prisma.pricingPlan.upsert({
             where: { slug: plan.slug },
             create: plan,
             update: {},
@@ -54,27 +53,27 @@ class PricingService {
     }
     async getActivePlans() {
         await this.ensureDefaultPlans();
-        return prisma.pricingPlan.findMany({
+        return database_1.prisma.pricingPlan.findMany({
             where: { isActive: true },
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         });
     }
     async getAllPlans() {
         await this.ensureDefaultPlans();
-        return prisma.pricingPlan.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
+        return database_1.prisma.pricingPlan.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
     }
     async getPlanById(id) {
         await this.ensureDefaultPlans();
-        return prisma.pricingPlan.findFirst({ where: { id, isActive: true } });
+        return database_1.prisma.pricingPlan.findFirst({ where: { id, isActive: true } });
     }
     async createPlan(data) {
-        return prisma.pricingPlan.create({ data });
+        return database_1.prisma.pricingPlan.create({ data });
     }
     async updatePlan(id, data) {
-        return prisma.pricingPlan.update({ where: { id }, data });
+        return database_1.prisma.pricingPlan.update({ where: { id }, data });
     }
     async deactivatePlan(id) {
-        return prisma.pricingPlan.update({ where: { id }, data: { isActive: false } });
+        return database_1.prisma.pricingPlan.update({ where: { id }, data: { isActive: false } });
     }
 }
 exports.PricingService = PricingService;

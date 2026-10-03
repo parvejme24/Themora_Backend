@@ -1,4 +1,4 @@
-import { IRegisterUser, ILoginUser, IGoogleLogin, IUpdateUser, IAuthResponse, ISessionValidation, IChangePassword, IUpdateProfile, IUserQuery, IUserStats, IVerifyOtp, IResendOtp } from "./auth.interface";
+import { IRegisterUser, ILoginUser, IGoogleLogin, IUpdateUser, IAuthResponse, ISessionValidation, IChangePassword, IUpdateProfile, IUserQuery, IUserStats, IVerifyOtp, IResendOtp, IResetPasswordWithOtp } from "./auth.interface";
 declare class AuthService {
     private generateNextAuthSecret;
     private generateSessionExpiration;
@@ -9,6 +9,9 @@ declare class AuthService {
     logoutUser(nextAuthSecret: string): Promise<IAuthResponse>;
     verifyOtp(data: IVerifyOtp): Promise<IAuthResponse>;
     resendOtp(data: IResendOtp): Promise<IAuthResponse>;
+    requestPasswordReset(email: string): Promise<IAuthResponse>;
+    verifyPasswordResetOtp(data: IVerifyOtp): Promise<IAuthResponse>;
+    resetPasswordWithOtp(data: IResetPasswordWithOtp): Promise<IAuthResponse>;
     changePassword(userId: string, data: IChangePassword): Promise<IAuthResponse>;
     updateProfile(userId: string, data: IUpdateProfile): Promise<IAuthResponse>;
     getUserById(userId: string): Promise<IAuthResponse>;

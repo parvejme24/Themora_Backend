@@ -74,6 +74,18 @@ export declare const verifyOtpSchema: z.ZodObject<{
 export declare const resendOtpSchema: z.ZodObject<{
     email: z.ZodString;
 }, z.core.$strip>;
+export declare const requestPasswordResetSchema: z.ZodObject<{
+    email: z.ZodString;
+}, z.core.$strip>;
+export declare const verifyPasswordResetOtpSchema: z.ZodObject<{
+    email: z.ZodString;
+    otp: z.ZodString;
+}, z.core.$strip>;
+export declare const resetPasswordWithOtpSchema: z.ZodObject<{
+    email: z.ZodString;
+    otp: z.ZodString;
+    newPassword: z.ZodString;
+}, z.core.$strip>;
 export declare const logoutSchema: z.ZodObject<{
     nextAuthSecret: z.ZodString;
 }, z.core.$strip>;

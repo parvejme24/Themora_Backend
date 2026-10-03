@@ -1,11 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.blogReviewService = exports.BlogReviewService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class BlogReviewService {
     async createBlogReview(data) {
-        const blogExists = await prisma.blog.findUnique({ where: { id: data.blogId } });
+        const blogExists = await database_1.prisma.blog.findUnique({ where: { id: data.blogId } });
         if (!blogExists) {
             throw new Error("Blog not found for the provided blogId");
         }
@@ -20,7 +19,7 @@ class BlogReviewService {
         if (data.userId) {
             createData.user = { connect: { id: data.userId } };
         }
-        const review = await prisma.blogReview.create({
+        const review = await database_1.prisma.blogReview.create({
             data: createData,
             include: { replies: true },
         });
@@ -32,7 +31,7 @@ class BlogReviewService {
             review: { connect: { id: data.reviewId } },
         };
         createData.admin = { connect: { id: data.adminId } };
-        const reply = await prisma.blogReviewReply.create({ data: createData });
+        const reply = await database_1.prisma.blogReviewReply.create({ data: createData });
         return reply;
     }
     async getBlogReviews(query, isAdmin = false) {
@@ -55,14 +54,14 @@ class BlogReviewService {
         orderBy[sortBy] = sortOrder;
         try {
             const [reviews, total] = await Promise.all([
-                prisma.blogReview.findMany({
+                database_1.prisma.blogReview.findMany({
                     where,
                     skip,
                     take: limit,
                     orderBy,
                     include: { replies: true },
                 }),
-                prisma.blogReview.count({ where }),
+                database_1.prisma.blogReview.count({ where }),
             ]);
             const totalPages = Math.ceil(total / limit);
             return {
@@ -88,14 +87,14 @@ class BlogReviewService {
                 if (rating)
                     whereWithoutHidden.rating = rating;
                 const [reviews, total] = await Promise.all([
-                    prisma.blogReview.findMany({
+                    database_1.prisma.blogReview.findMany({
                         where: whereWithoutHidden,
                         skip,
                         take: limit,
                         orderBy,
                         include: { replies: true },
                     }),
-                    prisma.blogReview.count({ where: whereWithoutHidden }),
+                    database_1.prisma.blogReview.count({ where: whereWithoutHidden }),
                 ]);
                 const totalPages = Math.ceil(total / limit);
                 return {
@@ -114,7 +113,7 @@ class BlogReviewService {
         }
     }
     async getBlogReviewById(id) {
-        const review = await prisma.blogReview.findUnique({
+        const review = await database_1.prisma.blogReview.findUnique({
             where: { id },
             include: { replies: true },
         });
@@ -140,7 +139,7 @@ class BlogReviewService {
         if (data.photoUrl !== undefined) {
             updateData.photoUrl = data.photoUrl;
         }
-        const review = await prisma.blogReview.update({
+        const review = await database_1.prisma.blogReview.update({
             where: { id },
             data: updateData,
             include: { replies: true },
@@ -149,7 +148,7 @@ class BlogReviewService {
     }
     async hideBlogReview(id) {
         try {
-            const review = await prisma.blogReview.update({
+            const review = await database_1.prisma.blogReview.update({
                 where: { id },
                 data: { isHidden: true },
                 include: { replies: true },
@@ -165,7 +164,7 @@ class BlogReviewService {
     }
     async unhideBlogReview(id) {
         try {
-            const review = await prisma.blogReview.update({
+            const review = await database_1.prisma.blogReview.update({
                 where: { id },
                 data: { isHidden: false },
                 include: { replies: true },
@@ -180,27 +179,27 @@ class BlogReviewService {
         }
     }
     async deleteAllReviewsByBlogId(blogId) {
-        const reviews = await prisma.blogReview.findMany({
+        const reviews = await database_1.prisma.blogReview.findMany({
             where: { blogId },
             select: { id: true },
         });
         const reviewIds = reviews.map(r => r.id);
         if (reviewIds.length > 0) {
-            await prisma.blogReviewReply.deleteMany({
+            await database_1.prisma.blogReviewReply.deleteMany({
                 where: { reviewId: { in: reviewIds } },
             });
         }
-        const result = await prisma.blogReview.deleteMany({
+        const result = await database_1.prisma.blogReview.deleteMany({
             where: { blogId },
         });
         return result.count;
     }
     async deleteBlogReview(id) {
         try {
-            await prisma.blogReviewReply.deleteMany({
+            await database_1.prisma.blogReviewReply.deleteMany({
                 where: { reviewId: id },
             });
-            await prisma.blogReview.delete({
+            await database_1.prisma.blogReview.delete({
                 where: { id },
             });
             return true;
@@ -212,7 +211,7 @@ class BlogReviewService {
     }
     async deleteBlogReviewReply(id) {
         try {
-            await prisma.blogReviewReply.delete({
+            await database_1.prisma.blogReviewReply.delete({
                 where: { id },
             });
             return true;
@@ -225,17 +224,17 @@ class BlogReviewService {
     async getBlogReviewStats(blogId) {
         const where = blogId ? { blogId } : {};
         const [totalReviews, averageRating, ratingDistribution, totalReplies,] = await Promise.all([
-            prisma.blogReview.count({ where }),
-            prisma.blogReview.aggregate({
+            database_1.prisma.blogReview.count({ where }),
+            database_1.prisma.blogReview.aggregate({
                 where,
                 _avg: { rating: true },
             }),
-            prisma.blogReview.groupBy({
+            database_1.prisma.blogReview.groupBy({
                 by: ['rating'],
                 where,
                 _count: { id: true },
             }),
-            prisma.blogReviewReply.count({
+            database_1.prisma.blogReviewReply.count({
                 where: blogId ? { review: { blogId } } : {},
             }),
         ]);
@@ -250,7 +249,7 @@ class BlogReviewService {
         };
     }
     async hasUserReviewed(blogId, userId) {
-        const existingReview = await prisma.blogReview.findFirst({
+        const existingReview = await database_1.prisma.blogReview.findFirst({
             where: {
                 blogId,
                 userId,

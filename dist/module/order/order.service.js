@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrderService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class OrderService {
     async getAllOrders(query) {
         const { page, limit, status, userId, templateId, sortBy, sortOrder } = query;
@@ -20,7 +19,7 @@ class OrderService {
         const orderBy = {};
         orderBy[sortBy] = sortOrder;
         const [orders, total] = await Promise.all([
-            prisma.orderInvoice.findMany({
+            database_1.prisma.orderInvoice.findMany({
                 where,
                 skip,
                 take: limit,
@@ -59,7 +58,7 @@ class OrderService {
                     },
                 },
             }),
-            prisma.orderInvoice.count({ where }),
+            database_1.prisma.orderInvoice.count({ where }),
         ]);
         const totalPages = Math.ceil(total / limit);
         return {
@@ -75,7 +74,7 @@ class OrderService {
         };
     }
     async getOrderById(id) {
-        const order = await prisma.orderInvoice.findUnique({
+        const order = await database_1.prisma.orderInvoice.findUnique({
             where: { id },
             include: {
                 user: {
@@ -114,7 +113,7 @@ class OrderService {
         return order;
     }
     async createOrder(data) {
-        const order = await prisma.orderInvoice.create({
+        const order = await database_1.prisma.orderInvoice.create({
             data: {
                 ...data,
                 downloadLinks: data.downloadLinks || [],
@@ -157,7 +156,7 @@ class OrderService {
         return order;
     }
     async updateOrderStatus(id, data) {
-        const order = await prisma.orderInvoice.update({
+        const order = await database_1.prisma.orderInvoice.update({
             where: { id },
             data,
             include: {
@@ -198,16 +197,16 @@ class OrderService {
     }
     async getOrderStats() {
         const [totalOrders, totalRevenue, ordersByStatus, ordersByLicenseType,] = await Promise.all([
-            prisma.orderInvoice.count(),
-            prisma.orderInvoice.aggregate({
+            database_1.prisma.orderInvoice.count(),
+            database_1.prisma.orderInvoice.aggregate({
                 _sum: { totalAmount: true },
             }),
-            prisma.orderInvoice.groupBy({
+            database_1.prisma.orderInvoice.groupBy({
                 by: ['status'],
                 _count: { id: true },
                 _sum: { totalAmount: true },
             }),
-            prisma.orderInvoice.groupBy({
+            database_1.prisma.orderInvoice.groupBy({
                 by: ['licenseType'],
                 _count: { id: true },
                 _sum: { totalAmount: true },
@@ -231,22 +230,84 @@ class OrderService {
         };
     }
     async claimGuestOrders(userId, email) {
-        const guestOrders = await prisma.orderInvoice.findMany({
+        const guestOrders = await database_1.prisma.orderInvoice.findMany({
             where: { userId: null, customerEmail: { equals: email.trim(), mode: "insensitive" } },
             select: { id: true },
         });
         const orderIds = guestOrders.map((order) => order.id);
         if (orderIds.length === 0)
             return;
-        await prisma.$transaction([
-            prisma.orderInvoice.updateMany({ where: { id: { in: orderIds }, userId: null }, data: { userId } }),
-            prisma.license.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
-            prisma.planEntitlement.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
+        await database_1.prisma.$transaction([
+            database_1.prisma.orderInvoice.updateMany({ where: { id: { in: orderIds }, userId: null }, data: { userId } }),
+            database_1.prisma.license.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
+            database_1.prisma.planEntitlement.updateMany({ where: { orderId: { in: orderIds }, userId: null }, data: { userId } }),
         ]);
     }
     async getUserOrders(userId, email, query) {
         await this.claimGuestOrders(userId, email);
         return this.getAllOrders({ ...query, userId });
+    }
+    async getTopSellingTemplates(limit = 5) {
+        const orders = await database_1.prisma.orderInvoice.groupBy({
+            by: ['templateId'],
+            where: {
+                templateId: { not: null },
+                status: { in: ['COMPLETED', 'PROCESSING'] },
+            },
+            _count: { id: true },
+            _sum: { totalAmount: true },
+            orderBy: { _count: { id: 'desc' } },
+            take: limit,
+        });
+        const templateIds = orders.map((o) => o.templateId).filter(Boolean);
+        const templates = await database_1.prisma.template.findMany({
+            where: { id: { in: templateIds } },
+            include: { category: { select: { title: true } } },
+        });
+        const templateMap = new Map(templates.map((t) => [t.id, t]));
+        const result = orders
+            .map((order) => {
+            const template = templateMap.get(order.templateId);
+            if (!template)
+                return null;
+            return {
+                template: {
+                    id: template.id,
+                    title: template.title,
+                    price: template.price,
+                    imageUrl: template.imageUrl,
+                    shortDescription: template.shortDescription,
+                    categoryName: template.category?.title || template.categoryName || undefined,
+                },
+                totalOrders: order._count.id,
+                totalRevenue: order._sum.totalAmount || 0,
+            };
+        })
+            .filter(Boolean);
+        if (result.length < limit) {
+            const existingIds = new Set(result.map((r) => r.template.id));
+            const additionalTemplates = await database_1.prisma.template.findMany({
+                where: { id: { notIn: Array.from(existingIds) } },
+                take: limit - result.length,
+                orderBy: { downloads: 'desc' },
+                include: { category: { select: { title: true } } },
+            });
+            for (const t of additionalTemplates) {
+                result.push({
+                    template: {
+                        id: t.id,
+                        title: t.title,
+                        price: t.price,
+                        imageUrl: t.imageUrl,
+                        shortDescription: t.shortDescription,
+                        categoryName: t.category?.title || t.categoryName || undefined,
+                    },
+                    totalOrders: t.totalPurchase || 0,
+                    totalRevenue: (t.totalPurchase || 0) * t.price,
+                });
+            }
+        }
+        return result;
     }
 }
 exports.OrderService = OrderService;

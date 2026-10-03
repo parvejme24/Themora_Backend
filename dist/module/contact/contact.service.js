@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.contactService = exports.ContactService = void 0;
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
+const database_1 = require("../../config/database");
 class ContactService {
     async getAllContacts(query) {
         const { page = 1, limit = 10, search, userId, email, sortBy = 'createdAt', sortOrder = 'desc' } = query;
@@ -22,8 +21,8 @@ class ContactService {
         if (email) {
             where.email = email;
         }
-        const total = await prisma.contact.count({ where });
-        const contacts = await prisma.contact.findMany({
+        const total = await database_1.prisma.contact.count({ where });
+        const contacts = await database_1.prisma.contact.findMany({
             where,
             skip,
             take: limit,
@@ -52,7 +51,7 @@ class ContactService {
         };
     }
     async getContactById(id) {
-        return await prisma.contact.findUnique({
+        return await database_1.prisma.contact.findUnique({
             where: { id },
             include: {
                 user: true,
@@ -66,7 +65,7 @@ class ContactService {
         });
     }
     async getContactsByUserEmail(userEmail) {
-        return await prisma.contact.findMany({
+        return await database_1.prisma.contact.findMany({
             where: { email: userEmail },
             include: {
                 user: true,
@@ -81,7 +80,7 @@ class ContactService {
         });
     }
     async createContact(data) {
-        return await prisma.contact.create({
+        return await database_1.prisma.contact.create({
             data,
             include: {
                 user: true,
@@ -91,7 +90,7 @@ class ContactService {
     }
     async updateContact(id, data) {
         try {
-            return await prisma.contact.update({
+            return await database_1.prisma.contact.update({
                 where: { id },
                 data,
                 include: {
@@ -111,7 +110,7 @@ class ContactService {
     }
     async deleteContact(id) {
         try {
-            await prisma.contact.delete({
+            await database_1.prisma.contact.delete({
                 where: { id },
             });
             return true;
@@ -121,7 +120,7 @@ class ContactService {
         }
     }
     async createContactReply(data) {
-        return await prisma.contactReply.create({
+        return await database_1.prisma.contactReply.create({
             data,
             include: {
                 user: true,
@@ -135,16 +134,16 @@ class ContactService {
         const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
         const [totalContacts, totalReplies, contactsThisMonth, contactsLastMonth, recentContacts,] = await Promise.all([
-            prisma.contact.count(),
-            prisma.contactReply.count(),
-            prisma.contact.count({
+            database_1.prisma.contact.count(),
+            database_1.prisma.contactReply.count(),
+            database_1.prisma.contact.count({
                 where: {
                     createdAt: {
                         gte: startOfMonth,
                     },
                 },
             }),
-            prisma.contact.count({
+            database_1.prisma.contact.count({
                 where: {
                     createdAt: {
                         gte: startOfLastMonth,
@@ -152,7 +151,7 @@ class ContactService {
                     },
                 },
             }),
-            prisma.contact.findMany({
+            database_1.prisma.contact.findMany({
                 take: 5,
                 orderBy: { createdAt: 'desc' },
                 include: {
@@ -176,7 +175,7 @@ class ContactService {
         };
     }
     async contactExists(id) {
-        const contact = await prisma.contact.findUnique({
+        const contact = await database_1.prisma.contact.findUnique({
             where: { id },
             select: { id: true },
         });

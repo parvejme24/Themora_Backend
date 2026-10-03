@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateResendOtp = exports.validateVerifyOtp = exports.validateLogout = exports.validateSessionValidation = exports.validateUserId = exports.validateUserQuery = exports.validateUpdateProfile = exports.validateChangePassword = exports.validateGoogleLogin = exports.validateLoginUser = exports.validateRegisterUser = void 0;
+exports.validateResetPasswordWithOtp = exports.validatePasswordResetOtp = exports.validateRequestPasswordReset = exports.validateResendOtp = exports.validateVerifyOtp = exports.validateLogout = exports.validateSessionValidation = exports.validateUserId = exports.validateUserQuery = exports.validateUpdateProfile = exports.validateChangePassword = exports.validateGoogleLogin = exports.validateLoginUser = exports.validateRegisterUser = void 0;
 const auth_type_1 = require("./auth.type");
 const validateRegisterUser = (req, res, next) => {
     try {
         const validatedData = auth_type_1.registerUserSchema.parse(req.body);
         req.body = validatedData;
-        next();
+        return next();
         return;
     }
     catch (error) {
@@ -22,7 +22,7 @@ const validateLoginUser = (req, res, next) => {
     try {
         const validatedData = auth_type_1.loginUserSchema.parse(req.body);
         req.body = validatedData;
-        next();
+        return next();
         return;
     }
     catch (error) {
@@ -38,7 +38,7 @@ const validateGoogleLogin = (req, res, next) => {
     try {
         const validatedData = auth_type_1.googleLoginSchema.parse(req.body);
         req.body = validatedData;
-        next();
+        return next();
         return;
     }
     catch (error) {
@@ -178,4 +178,34 @@ const validateResendOtp = (req, res, next) => {
     }
 };
 exports.validateResendOtp = validateResendOtp;
+const validateRequestPasswordReset = (req, res, next) => {
+    try {
+        req.body = auth_type_1.requestPasswordResetSchema.parse(req.body);
+        return next();
+    }
+    catch (error) {
+        return res.status(400).json({ success: false, message: "Invalid email address", error: error.errors || error.message });
+    }
+};
+exports.validateRequestPasswordReset = validateRequestPasswordReset;
+const validatePasswordResetOtp = (req, res, next) => {
+    try {
+        req.body = auth_type_1.verifyPasswordResetOtpSchema.parse(req.body);
+        return next();
+    }
+    catch (error) {
+        return res.status(400).json({ success: false, message: "Invalid reset code details", error: error.errors || error.message });
+    }
+};
+exports.validatePasswordResetOtp = validatePasswordResetOtp;
+const validateResetPasswordWithOtp = (req, res, next) => {
+    try {
+        req.body = auth_type_1.resetPasswordWithOtpSchema.parse(req.body);
+        return next();
+    }
+    catch (error) {
+        return res.status(400).json({ success: false, message: "Invalid password reset details", error: error.errors || error.message });
+    }
+};
+exports.validateResetPasswordWithOtp = validateResetPasswordWithOtp;
 //# sourceMappingURL=auth.validate.js.map

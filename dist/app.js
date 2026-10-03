@@ -20,14 +20,13 @@ app.use((req, res, next) => {
 app.use((0, helmet_1.default)());
 app.use((0, express_xss_sanitizer_1.xss)());
 const limiter = (0, express_rate_limit_1.default)({
-    windowMs: 60 * 60 * 1000,
-    max: 100,
+    windowMs: 15 * 60 * 1000,
+    max: 5000,
+    skip: () => env_1.env.NODE_ENV === "development",
     message: "Too many requests from this IP, please try again later.",
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => {
-        return req.ip || req.connection.remoteAddress || "unknown";
-    },
+    validate: { xForwardedForHeader: false, default: false },
 });
 app.use(limiter);
 const allowedOrigins = [

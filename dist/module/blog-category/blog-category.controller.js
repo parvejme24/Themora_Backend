@@ -124,7 +124,7 @@ const updateBlogCategory = async (req, res) => {
         const { id } = req.params;
         const title = req.body?.title;
         const slug = req.body?.slug;
-        let imageUrl;
+        let imageUrl = req.body?.imageUrl;
         if (req.file) {
             const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(req.file, "themora/blog-categories");
             imageUrl = uploaded.url;

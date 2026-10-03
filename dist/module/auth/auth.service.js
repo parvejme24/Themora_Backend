@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = void 0;
 const client_1 = require("@prisma/client");
+const database_1 = require("../../config/database");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const crypto_1 = __importDefault(require("crypto"));
 const email_1 = require("../../utils/email");
-const prisma = new client_1.PrismaClient();
 class AuthService {
     generateNextAuthSecret() {
         return crypto_1.default.randomBytes(32).toString("hex");
@@ -20,7 +20,7 @@ class AuthService {
     }
     async registerUser(data) {
         try {
-            const existingUser = await prisma.user.findUnique({
+            const existingUser = await database_1.prisma.user.findUnique({
                 where: { email: data.email },
             });
             if (existingUser) {
@@ -37,7 +37,7 @@ class AuthService {
             const sessionExpiration = nextAuthSecret
                 ? this.generateSessionExpiration()
                 : null;
-            const user = await prisma.user.create({
+            const user = await database_1.prisma.user.create({
                 data: {
                     fullName: data.fullName,
                     email: data.email,
@@ -52,7 +52,7 @@ class AuthService {
                     profile: true,
                 },
             });
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: user.id },
                 data: {
                     otpCode: otp,
@@ -66,6 +66,11 @@ class AuthService {
             }
             catch (err) {
                 console.error("Failed to send OTP email:", err);
+                return {
+                    success: false,
+                    message: "Account created, but verification email could not be sent. Please request a new code.",
+                    error: "Email delivery failed",
+                };
             }
             return {
                 success: true,
@@ -88,7 +93,7 @@ class AuthService {
     }
     async loginUser(data) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { email: data.email },
                 include: { profile: true },
             });
@@ -130,7 +135,7 @@ class AuthService {
             }
             const nextAuthSecret = data.clientToken || this.generateNextAuthSecret();
             const sessionExpiration = this.generateSessionExpiration();
-            const updatedUser = await prisma.user.update({
+            const updatedUser = await database_1.prisma.user.update({
                 where: { id: user.id },
                 data: {
                     nextAuthSecret,
@@ -161,14 +166,14 @@ class AuthService {
     }
     async googleLogin(data) {
         try {
-            let user = await prisma.user.findUnique({
+            let user = await database_1.prisma.user.findUnique({
                 where: { email: data.email },
                 include: { profile: true },
             });
             if (user) {
                 const nextAuthSecret = this.generateNextAuthSecret();
                 const sessionExpiration = this.generateSessionExpiration();
-                const updatedUser = await prisma.user.update({
+                const updatedUser = await database_1.prisma.user.update({
                     where: { id: user.id },
                     data: {
                         nextAuthSecret: data.clientToken || nextAuthSecret,
@@ -194,7 +199,7 @@ class AuthService {
             else {
                 const nextAuthSecret = this.generateNextAuthSecret();
                 const sessionExpiration = this.generateSessionExpiration();
-                const newUser = await prisma.user.create({
+                const newUser = await database_1.prisma.user.create({
                     data: {
                         fullName: data.fullName,
                         email: data.email,
@@ -209,7 +214,7 @@ class AuthService {
                     include: { profile: true },
                 });
                 if (data.avatarUrl) {
-                    await prisma.userProfile.create({
+                    await database_1.prisma.userProfile.create({
                         data: {
                             userId: newUser.id,
                             avatarUrl: data.avatarUrl,
@@ -238,7 +243,7 @@ class AuthService {
     }
     async validateSession(nextAuthSecret) {
         try {
-            const user = await prisma.user.findFirst({
+            const user = await database_1.prisma.user.findFirst({
                 where: {
                     nextAuthSecret,
                     isLoggedIn: true,
@@ -269,7 +274,7 @@ class AuthService {
     }
     async logoutUser(nextAuthSecret) {
         try {
-            const user = await prisma.user.findFirst({
+            const user = await database_1.prisma.user.findFirst({
                 where: { nextAuthSecret },
             });
             if (!user) {
@@ -279,7 +284,7 @@ class AuthService {
                     error: "User not found",
                 };
             }
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: user.id },
                 data: {
                     nextAuthSecret: null,
@@ -303,7 +308,7 @@ class AuthService {
     }
     async verifyOtp(data) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { email: data.email },
             });
             if (!user) {
@@ -328,7 +333,7 @@ class AuthService {
             if (user.otpCode !== data.otp) {
                 return { success: false, message: "Invalid OTP", error: "Invalid OTP" };
             }
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: user.id },
                 data: {
                     otpVerified: true,
@@ -350,7 +355,7 @@ class AuthService {
     }
     async resendOtp(data) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { email: data.email },
             });
             if (!user) {
@@ -369,16 +374,11 @@ class AuthService {
             }
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: user.id },
                 data: { otpCode: otp, otpPurpose: "REGISTRATION", otpExpiresAt },
             });
-            try {
-                await (0, email_1.sendOtpEmail)(user.email, otp);
-            }
-            catch (err) {
-                console.error("Failed to send OTP email:", err);
-            }
+            await (0, email_1.sendOtpEmail)(user.email, otp);
             return { success: true, message: "OTP resent successfully" };
         }
         catch (error) {
@@ -390,9 +390,83 @@ class AuthService {
             };
         }
     }
+    async requestPasswordReset(email) {
+        const genericMessage = "If an account exists for that email, a password reset code has been sent.";
+        try {
+            const normalizedEmail = email.trim().toLowerCase();
+            const user = await database_1.prisma.user.findUnique({ where: { email: normalizedEmail } });
+            if (!user || !user.password || user.isBanned || user.isTrashed || user.isDeletedPermanently) {
+                return { success: true, message: genericMessage };
+            }
+            const otp = crypto_1.default.randomInt(100000, 1000000).toString();
+            const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+            await database_1.prisma.user.update({
+                where: { id: user.id },
+                data: { otpCode: otp, otpPurpose: client_1.OtpPurpose.PASSWORD_RESET, otpExpiresAt },
+            });
+            try {
+                await (0, email_1.sendOtpEmail)(user.email, otp, "password reset");
+            }
+            catch (error) {
+                await database_1.prisma.user.update({
+                    where: { id: user.id },
+                    data: { otpCode: null, otpPurpose: null, otpExpiresAt: null },
+                });
+                console.error("Failed to send password reset email:", error);
+                return { success: false, message: "Unable to send the reset code. Please try again later.", error: "Email delivery failed" };
+            }
+            return { success: true, message: genericMessage };
+        }
+        catch (error) {
+            console.error("Error requesting password reset:", error);
+            return { success: false, message: "Unable to process the password reset request", error: "Password reset failed" };
+        }
+    }
+    async verifyPasswordResetOtp(data) {
+        try {
+            const user = await database_1.prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
+            if (!user || user.otpPurpose !== client_1.OtpPurpose.PASSWORD_RESET || !user.otpCode || !user.otpExpiresAt || user.otpExpiresAt < new Date() || user.otpCode !== data.otp) {
+                return { success: false, message: "The reset code is invalid or expired", error: "Invalid reset code" };
+            }
+            return { success: true, message: "Reset code verified" };
+        }
+        catch (error) {
+            console.error("Error verifying password reset code:", error);
+            return { success: false, message: "Unable to verify the reset code", error: "Reset verification failed" };
+        }
+    }
+    async resetPasswordWithOtp(data) {
+        const verification = await this.verifyPasswordResetOtp(data);
+        if (!verification.success)
+            return verification;
+        try {
+            const normalizedEmail = data.email.trim().toLowerCase();
+            const user = await database_1.prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } });
+            if (!user)
+                return { success: false, message: "The reset code is invalid or expired", error: "Invalid reset code" };
+            await database_1.prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    password: await bcryptjs_1.default.hash(data.newPassword, 12),
+                    otpCode: null,
+                    otpPurpose: null,
+                    otpExpiresAt: null,
+                    otpVerified: true,
+                    nextAuthSecret: null,
+                    nextAuthExpiresAt: null,
+                    isLoggedIn: false,
+                },
+            });
+            return { success: true, message: "Password reset successfully" };
+        }
+        catch (error) {
+            console.error("Error resetting password:", error);
+            return { success: false, message: "Unable to reset the password", error: "Password reset failed" };
+        }
+    }
     async changePassword(userId, data) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
             });
             if (!user || !user.password) {
@@ -411,7 +485,7 @@ class AuthService {
                 };
             }
             const hashedNewPassword = await bcryptjs_1.default.hash(data.newPassword, 12);
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: userId },
                 data: { password: hashedNewPassword },
             });
@@ -431,25 +505,25 @@ class AuthService {
     }
     async updateProfile(userId, data) {
         try {
-            const existingProfile = await prisma.userProfile.findUnique({
+            const existingProfile = await database_1.prisma.userProfile.findUnique({
                 where: { userId },
             });
             let profile;
             if (existingProfile) {
-                profile = await prisma.userProfile.update({
+                profile = await database_1.prisma.userProfile.update({
                     where: { userId },
                     data,
                 });
             }
             else {
-                profile = await prisma.userProfile.create({
+                profile = await database_1.prisma.userProfile.create({
                     data: {
                         userId,
                         ...data,
                     },
                 });
             }
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
                 include: { profile: true },
             });
@@ -470,7 +544,7 @@ class AuthService {
     }
     async getUserById(userId) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
                 include: { profile: true },
             });
@@ -523,14 +597,14 @@ class AuthService {
                 orderBy.createdAt = "desc";
             }
             const [users, total] = await Promise.all([
-                prisma.user.findMany({
+                database_1.prisma.user.findMany({
                     where,
                     skip,
                     take: limit,
                     orderBy,
                     include: { profile: true },
                 }),
-                prisma.user.count({ where }),
+                database_1.prisma.user.count({ where }),
             ]);
             return {
                 users,
@@ -552,29 +626,29 @@ class AuthService {
     async getUserStats() {
         try {
             const [totalUsers, activeUsers, bannedUsers, trashedUsers, loggedInUsers, usersByRole, recentRegistrations, recentLogins,] = await Promise.all([
-                prisma.user.count(),
-                prisma.user.count({
+                database_1.prisma.user.count(),
+                database_1.prisma.user.count({
                     where: {
                         isBanned: false,
                         isTrashed: false,
                         isDeletedPermanently: false,
                     },
                 }),
-                prisma.user.count({ where: { isBanned: true } }),
-                prisma.user.count({ where: { isTrashed: true } }),
-                prisma.user.count({ where: { isLoggedIn: true } }),
-                prisma.user.groupBy({
+                database_1.prisma.user.count({ where: { isBanned: true } }),
+                database_1.prisma.user.count({ where: { isTrashed: true } }),
+                database_1.prisma.user.count({ where: { isLoggedIn: true } }),
+                database_1.prisma.user.groupBy({
                     by: ["role"],
                     _count: { id: true },
                 }),
-                prisma.user.count({
+                database_1.prisma.user.count({
                     where: {
                         createdAt: {
                             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
                         },
                     },
                 }),
-                prisma.user.count({
+                database_1.prisma.user.count({
                     where: {
                         lastLoginAt: {
                             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -603,7 +677,7 @@ class AuthService {
     }
     async updateUser(userId, data) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
             });
             if (!user) {
@@ -617,7 +691,7 @@ class AuthService {
             if (data.password) {
                 updateData.password = await bcryptjs_1.default.hash(data.password, 12);
             }
-            const updatedUser = await prisma.user.update({
+            const updatedUser = await database_1.prisma.user.update({
                 where: { id: userId },
                 data: updateData,
                 include: { profile: true },
@@ -639,7 +713,7 @@ class AuthService {
     }
     async deleteUser(userId) {
         try {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
             });
             if (!user) {
@@ -649,7 +723,7 @@ class AuthService {
                     error: "User not found",
                 };
             }
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: userId },
                 data: {
                     isTrashed: true,

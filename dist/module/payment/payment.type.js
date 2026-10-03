@@ -7,5 +7,6 @@ exports.createCheckoutSchema = zod_1.z.object({
     productId: zod_1.z.string().uuid(),
     customerEmail: zod_1.z.string().email().optional(),
     customerName: zod_1.z.string().trim().min(2).max(120).optional(),
+    gateway: zod_1.z.enum(["lemonsqueezy", "fastspring", "auto"]).optional().default("auto"),
 });
 //# sourceMappingURL=payment.type.js.map

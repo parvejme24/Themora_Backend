@@ -15,11 +15,11 @@ export declare const createBlogReviewReplySchema: z.ZodObject<{
     photoUrl: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const blogReviewQuerySchema: z.ZodObject<{
-    page: z.ZodDefault<z.ZodOptional<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>>;
-    limit: z.ZodDefault<z.ZodOptional<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>>;
+    page: z.ZodDefault<z.ZodOptional<z.ZodCoercedNumber<unknown>>>;
+    limit: z.ZodDefault<z.ZodOptional<z.ZodCoercedNumber<unknown>>>;
     blogId: z.ZodOptional<z.ZodString>;
     userId: z.ZodOptional<z.ZodString>;
-    rating: z.ZodOptional<z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<number, string>>, z.ZodNumber>>;
+    rating: z.ZodOptional<z.ZodCoercedNumber<unknown>>;
     sortBy: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
         createdAt: "createdAt";
         updatedAt: "updatedAt";

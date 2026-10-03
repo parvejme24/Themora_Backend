@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeUserRole = exports.restoreUser = exports.trashUser = exports.unbanUser = exports.banUser = exports.deleteUser = exports.getUserStats = exports.getAllUsers = exports.getUserById = exports.getCurrentUser = exports.updateAvatarImage = exports.updateProfile = exports.changePassword = exports.logoutUser = exports.validateSession = exports.resendOtp = exports.verifyOtp = exports.googleLogin = exports.loginUser = exports.registerUser = void 0;
+exports.changeUserRole = exports.restoreUser = exports.trashUser = exports.unbanUser = exports.banUser = exports.deleteUser = exports.getUserStats = exports.getAllUsers = exports.getUserById = exports.getCurrentUser = exports.updateAvatarImage = exports.updateProfile = exports.changePassword = exports.logoutUser = exports.validateSession = exports.resetPasswordWithOtp = exports.verifyPasswordResetOtp = exports.requestPasswordReset = exports.resendOtp = exports.verifyOtp = exports.googleLogin = exports.loginUser = exports.registerUser = void 0;
 const auth_service_1 = require("./auth.service");
 const cloudinary_upload_1 = require("../../middleware/cloudinary-upload");
 const registerUser = async (req, res) => {
@@ -93,6 +93,21 @@ const resendOtp = async (req, res) => {
     }
 };
 exports.resendOtp = resendOtp;
+const requestPasswordReset = async (req, res) => {
+    const result = await auth_service_1.authService.requestPasswordReset(req.body.email);
+    return res.status(result.success ? 200 : result.error === "Email delivery failed" ? 503 : 500).json(result);
+};
+exports.requestPasswordReset = requestPasswordReset;
+const verifyPasswordResetOtp = async (req, res) => {
+    const result = await auth_service_1.authService.verifyPasswordResetOtp(req.body);
+    return res.status(result.success ? 200 : 400).json(result);
+};
+exports.verifyPasswordResetOtp = verifyPasswordResetOtp;
+const resetPasswordWithOtp = async (req, res) => {
+    const result = await auth_service_1.authService.resetPasswordWithOtp(req.body);
+    return res.status(result.success ? 200 : result.error === "Password reset failed" ? 500 : 400).json(result);
+};
+exports.resetPasswordWithOtp = resetPasswordWithOtp;
 const validateSession = async (req, res) => {
     try {
         const { nextAuthSecret } = req.body;

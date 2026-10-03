@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deletePricingPlan = exports.updatePricingPlan = exports.createPricingPlan = exports.getAllPricingPlans = exports.getPricingPlan = exports.getPricingPlans = void 0;
 const pricing_service_1 = require("./pricing.service");
+const cache_1 = require("../../middleware/cache");
 const getPricingPlans = async (_req, res) => {
     try {
         const plans = await pricing_service_1.pricingService.getActivePlans();
@@ -40,6 +41,7 @@ exports.getAllPricingPlans = getAllPricingPlans;
 const createPricingPlan = async (req, res) => {
     try {
         const plan = await pricing_service_1.pricingService.createPlan(req.validatedBody);
+        (0, cache_1.clearCache)("/api/v1/pricing");
         return res.status(201).json({ success: true, data: plan });
     }
     catch (error) {
@@ -51,6 +53,7 @@ exports.createPricingPlan = createPricingPlan;
 const updatePricingPlan = async (req, res) => {
     try {
         const plan = await pricing_service_1.pricingService.updatePlan(req.params.id, req.validatedBody);
+        (0, cache_1.clearCache)("/api/v1/pricing");
         return res.status(200).json({ success: true, data: plan });
     }
     catch (error) {
@@ -62,6 +65,7 @@ exports.updatePricingPlan = updatePricingPlan;
 const deletePricingPlan = async (req, res) => {
     try {
         const plan = await pricing_service_1.pricingService.deactivatePlan(req.params.id);
+        (0, cache_1.clearCache)("/api/v1/pricing");
         return res.status(200).json({ success: true, data: plan });
     }
     catch (error) {
