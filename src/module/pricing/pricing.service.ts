@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { CreatePricingPlanInput, UpdatePricingPlanInput } from "./pricing.interface";
-
-const prisma = new PrismaClient();
 
 const defaultPlans: CreatePricingPlanInput[] = [
 	{
