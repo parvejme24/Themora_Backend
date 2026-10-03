@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { IBlog, ICreateBlog, IUpdateBlog, IBlogQuery, IBlogStats } from "./blog.interface";
-
-const prisma = new PrismaClient();
 
 export class BlogService {
   // Get all blogs with pagination and filtering

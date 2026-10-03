@@ -45,7 +45,7 @@ export const blogQuerySchema = z.object({
   search: z.string().optional(),
   categoryId: z.string().uuid("Invalid category ID").optional(),
   authorId: z.string().uuid("Invalid author ID").optional(),
-  isPublished: z.string().transform(Boolean).optional(),
+  isPublished: z.enum(["true", "false"]).transform((value) => value === "true").optional(),
   sortBy: z.enum(['createdAt', 'updatedAt', 'reactCount', 'viewCount', 'readingTime']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
