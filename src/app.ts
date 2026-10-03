@@ -24,17 +24,15 @@ app.use((req, res, next) => {
 app.use(helmet());
 app.use(xss());
 
-// Rate limiting
+// Rate limiting - optimized for fast API responses
 const limiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5000, // allow up to 5000 requests per 15 minutes
+  skip: () => env.NODE_ENV === "development", // skip in development
   message: "Too many requests from this IP, please try again later.",
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  keyGenerator: (req) => {
-    // Use X-Forwarded-For header for Vercel
-    return req.ip || req.connection.remoteAddress || "unknown";
-  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, default: false },
 });
 app.use(limiter);
 
