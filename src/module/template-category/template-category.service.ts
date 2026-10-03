@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { ITemplateCategoryService } from "./template-category.interface";
 import { 
   TemplateCategory, 
@@ -7,8 +7,6 @@ import {
   PaginatedTemplateCategories,
   TemplateCategoryStats 
 } from "./template-category.type";
-
-const prisma = new PrismaClient();
 
 export class TemplateCategoryService implements ITemplateCategoryService {
   // Create template category
