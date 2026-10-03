@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { TemplateService } from "./template.service";
 import { OrderService } from "../order/order.service";
 
 const templateService = new TemplateService();
-const prisma = new PrismaClient();
 const orderService = new OrderService();
 
 const userHasTemplateAccess = async (userId: string, templateId: string) => {
