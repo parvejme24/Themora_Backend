@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { IBlogReview, ICreateBlogReview, ICreateBlogReviewReply, IBlogReviewQuery, IBlogReviewStats, IUpdateBlogReview } from "./blog-review.interface";
-
-const prisma = new PrismaClient();
 
 export class BlogReviewService {
   // Create blog review

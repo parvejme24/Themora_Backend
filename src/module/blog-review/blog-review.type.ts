@@ -30,11 +30,11 @@ export const createBlogReviewReplySchema = z.object({
 
 // Blog review query schema
 export const blogReviewQuerySchema = z.object({
-  page: z.string().transform(Number).pipe(z.number().min(1)).optional().default(1),
-  limit: z.string().transform(Number).pipe(z.number().min(1).max(100)).optional().default(10),
+  page: z.coerce.number().min(1).optional().default(1),
+  limit: z.coerce.number().min(1).max(100).optional().default(10),
   blogId: z.string().uuid("Invalid blog ID").optional(),
   userId: z.string().uuid("Invalid user ID").optional(),
-  rating: z.string().transform(Number).pipe(z.number().min(1).max(5)).optional(),
+  rating: z.coerce.number().min(1).max(5).optional(),
   sortBy: z.enum(['createdAt', 'rating', 'updatedAt']).optional().default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 });
