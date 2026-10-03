@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../../config/database";
 import { IContact, ICreateContact, IUpdateContact, IContactQuery, IContactStats, ICreateContactReply } from "./contact.interface";
-
-const prisma = new PrismaClient();
 
 export class ContactService {
   // Get all contacts with pagination and filtering
