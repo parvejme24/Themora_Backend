@@ -19,13 +19,15 @@ import {
   validateNewArrivalsQuery,
 } from './template.validate';
 
+import { cacheResponse } from '../../middleware/cache';
+
 const router = Router();
 
-// Public routes
-router.get('/templates', optionalAuth, validateTemplateQuery, getAllTemplates);
-router.get('/templates/new-arrivals', optionalAuth, validateNewArrivalsQuery, getNewArrivals);
-router.get('/templates/stats', getTemplateStats);
-router.get('/templates/:id', optionalAuth, validateTemplateId, getTemplateById);
+// Public routes (cached for high performance)
+router.get('/templates', cacheResponse(30), optionalAuth, validateTemplateQuery, getAllTemplates);
+router.get('/templates/new-arrivals', cacheResponse(30), optionalAuth, validateNewArrivalsQuery, getNewArrivals);
+router.get('/templates/stats', cacheResponse(60), getTemplateStats);
+router.get('/templates/:id', cacheResponse(30), optionalAuth, validateTemplateId, getTemplateById);
 
 // Admin routes
 router.post('/templates', authenticateAdminAndCheckStatus, (req: any, res: any, next: any) => {
