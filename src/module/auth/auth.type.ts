@@ -1,12 +1,18 @@
 import { z } from "zod";
 
-// Register user schema
-export const registerUserSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters").max(100, "Full name must be less than 100 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
-  clientToken: z.string().min(10, "clientToken must be at least 10 characters").optional(),
-});
+// Register user schema (supports fullName or name)
+export const registerUserSchema = z
+  .object({
+    fullName: z.string().min(2, "Full name must be at least 2 characters").max(100, "Full name must be less than 100 characters").optional(),
+    name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters").optional(),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
+    clientToken: z.string().min(10, "clientToken must be at least 10 characters").optional(),
+  })
+  .refine((data) => Boolean(data.fullName || data.name), {
+    message: "Full name or name is required",
+    path: ["name"],
+  });
 
 // Login user schema
 export const loginUserSchema = z.object({
@@ -34,19 +40,20 @@ export const nextAuthSessionSchema = z.object({
   providerId: z.string().optional(),
 });
 
-// (Removed generic updateUserSchema since generic admin update endpoint was removed)
-
 // Change password schema
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string().min(6, "New password must be at least 6 characters").max(100, "New password must be less than 100 characters"),
 });
 
-// Update profile schema
+// Update profile schema (supports name/fullName, avatarUrl, address, phone, etc.)
 export const updateProfileSchema = z.object({
-  avatarUrl: z.string().url("Invalid avatar URL").optional(),
+  name: z.string().max(100, "Name must be less than 100 characters").optional(),
+  fullName: z.string().max(100, "Full name must be less than 100 characters").optional(),
+  avatarUrl: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
   designation: z.string().max(100, "Designation must be less than 100 characters").optional(),
   phone: z.string().max(20, "Phone must be less than 20 characters").optional(),
+  address: z.string().max(200, "Address must be less than 200 characters").optional(),
   country: z.string().max(50, "Country must be less than 50 characters").optional(),
   city: z.string().max(50, "City must be less than 50 characters").optional(),
   stateOrRegion: z.string().max(50, "State or region must be less than 50 characters").optional(),
@@ -75,6 +82,7 @@ export const userIdSchema = z.object({
 export const sessionValidationSchema = z.object({
   nextAuthSecret: z.string().min(1, "NextAuth secret is required"),
 });
+
 // OTP schemas
 export const verifyOtpSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -97,8 +105,13 @@ export const resetPasswordWithOtpSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
 });
 
-
 // Logout schema
 export const logoutSchema = z.object({
-  nextAuthSecret: z.string().min(1, "NextAuth secret is required"),
+  nextAuthSecret: z.string().min(1).optional(),
+  token: z.string().min(1).optional(),
+}).optional();
+
+// Change user role schema
+export const changeUserRoleSchema = z.object({
+  role: z.enum(["ADMIN", "USER"]),
 });

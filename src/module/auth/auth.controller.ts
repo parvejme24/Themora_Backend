@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { authService } from "./auth.service";
 import { IUserQuery } from "./auth.interface";
-import { uploadBufferToCloudinary } from "../../middleware/cloudinary-upload";
+import { uploadBufferToCloudinary, getUploadedFile } from "../../middleware/cloudinary-upload";
 
 // Register new user
 export const registerUser = async (req: Request, res: Response) => {
@@ -157,7 +157,24 @@ export const validateSession = async (req: Request, res: Response) => {
 // Logout user
 export const logoutUser = async (req: Request, res: Response) => {
   try {
-    const { nextAuthSecret } = req.body;
+    let nextAuthSecret = req.body?.nextAuthSecret || req.body?.token;
+    if (!nextAuthSecret) {
+      const authHeader = req.headers["authorization"] as string | undefined;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        nextAuthSecret = authHeader.slice("Bearer ".length);
+      } else if (req.headers["x-nextauth-secret"]) {
+        nextAuthSecret = req.headers["x-nextauth-secret"] as string;
+      }
+    }
+
+    if (!nextAuthSecret) {
+      return res.status(400).json({
+        success: false,
+        message: "Token or nextAuthSecret is required for logout",
+        error: "Missing token",
+      });
+    }
+
     const result = await authService.logoutUser(nextAuthSecret);
 
     if (!result.success) {
@@ -204,7 +221,7 @@ export const changePassword = async (req: Request, res: Response) => {
   }
 };
 
-// Update profile
+// Update profile (accepts fields + optional file upload)
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
@@ -216,7 +233,20 @@ export const updateProfile = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await authService.updateProfile(userId, req.body);
+    const file = getUploadedFile(req);
+    let avatarUrl: string | undefined = req.body?.avatarUrl;
+
+    if (file) {
+      const uploaded = await uploadBufferToCloudinary(file, "themora/avatars");
+      avatarUrl = uploaded.url;
+    }
+
+    const updateData = {
+      ...req.body,
+      ...(avatarUrl ? { avatarUrl } : {}),
+    };
+
+    const result = await authService.updateProfile(userId, updateData);
 
     if (!result.success) {
       return res.status(400).json(result);
@@ -245,17 +275,17 @@ export const updateAvatarImage = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if file was uploaded via memory storage
-    if (!(req as any).file) {
+    const file = getUploadedFile(req);
+    if (!file) {
       return res.status(400).json({
         success: false,
-        message: "No image uploaded",
+        message: "No image uploaded. Please provide an image file under 'image' or 'avatar' field",
         error: "Missing file",
       });
     }
 
     // Upload buffer to Cloudinary
-    const uploaded = await uploadBufferToCloudinary((req as any).file);
+    const uploaded = await uploadBufferToCloudinary(file, "themora/avatars");
     const url = uploaded.url;
 
     const result = await authService.updateProfile(userId, { avatarUrl: url });
@@ -512,7 +542,7 @@ export const restoreUser = async (req: Request, res: Response) => {
 export const changeUserRole = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { role } = req.body;
+    const role = (req.body?.role || "").toUpperCase();
 
     if (!role || !["ADMIN", "USER"].includes(role)) {
       return res.status(400).json({
@@ -522,7 +552,7 @@ export const changeUserRole = async (req: Request, res: Response) => {
       });
     }
 
-    const result = await authService.updateUser(id, { role });
+    const result = await authService.updateUser(id, { role: role as any });
 
     if (!result.success) {
       return res.status(400).json(result);

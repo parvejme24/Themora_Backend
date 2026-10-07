@@ -39,12 +39,13 @@ import {
   validateUserId,
   validateSessionValidation,
   validateLogout,
+  validateChangeUserRole,
 } from "./auth.validate";
 import {
   authenticateAndCheckStatus,
   authenticateAdminAndCheckStatus,
 } from "../../middleware/authMiddleware";
-import { uploadImageMemory, handleUploadError } from "../../middleware/cloudinary-upload";
+import { uploadAvatarImageCloudinary, handleUploadError } from "../../middleware/cloudinary-upload";
 import { Request, Response, NextFunction } from "express";
 
 const router = Router();
@@ -63,14 +64,39 @@ router.post("/auth/logout", validateLogout, logoutUser);
 
 // Protected routes (authentication required)
 router.post("/auth/change-password", authenticateAndCheckStatus, validateChangePassword, changePassword);
-router.put("/auth/profile", authenticateAndCheckStatus, validateUpdateProfile, updateProfile);
-// Use memory upload; controller streams to Cloudinary
-router.put("/auth/profile/avatar", authenticateAndCheckStatus, (req: Request, res: Response, next: NextFunction) => {
-  (uploadImageMemory as any)(req, res, (err: any) => {
-    if (err) return handleUploadError(err, req, res, next);
-    return next();
-  });
-}, updateAvatarImage);
+
+// Update profile (accepts JSON or multipart/form-data with optional avatar image)
+router.put(
+  "/auth/profile",
+  authenticateAndCheckStatus,
+  (req: Request, res: Response, next: NextFunction) => {
+    const contentType = req.headers["content-type"] || "";
+    if (contentType.includes("multipart/form-data")) {
+      (uploadAvatarImageCloudinary as any)(req, res, (err: any) => {
+        if (err) return handleUploadError(err, req, res, next);
+        return next();
+      });
+    } else {
+      return next();
+    }
+  },
+  validateUpdateProfile,
+  updateProfile
+);
+
+// Explicit avatar update endpoint
+router.put(
+  "/auth/profile/avatar",
+  authenticateAndCheckStatus,
+  (req: Request, res: Response, next: NextFunction) => {
+    (uploadAvatarImageCloudinary as any)(req, res, (err: any) => {
+      if (err) return handleUploadError(err, req, res, next);
+      return next();
+    });
+  },
+  updateAvatarImage
+);
+
 router.get("/auth/me", authenticateAndCheckStatus, getCurrentUser);
 
 // Admin routes (admin authentication required)
@@ -84,6 +110,7 @@ router.patch("/auth/users/:id/ban", authenticateAdminAndCheckStatus, validateUse
 router.patch("/auth/users/:id/unban", authenticateAdminAndCheckStatus, validateUserId, unbanUser);
 router.patch("/auth/users/:id/trash", authenticateAdminAndCheckStatus, validateUserId, trashUser);
 router.patch("/auth/users/:id/restore", authenticateAdminAndCheckStatus, validateUserId, restoreUser);
-router.patch("/auth/users/:id/role", authenticateAdminAndCheckStatus, validateUserId, changeUserRole);
+router.patch("/auth/users/:id/role", authenticateAdminAndCheckStatus, validateUserId, validateChangeUserRole, changeUserRole);
+router.put("/auth/users/:id/role", authenticateAdminAndCheckStatus, validateUserId, validateChangeUserRole, changeUserRole);
 
 export default router;
