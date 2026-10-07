@@ -27,8 +27,8 @@ router.get('/orders/top-selling', cacheResponse(30), optionalAuth, getTopSelling
 router.get('/orders', authenticateAdminAndCheckStatus, validateOrderQuery, getAllOrders);
 router.get('/orders/stats', authenticateAdminAndCheckStatus, getOrderStats);
 
-// Order by ID route
-router.get('/orders/:id', authenticateAndCheckStatus, validateOrderId, getOrderById);
+// Order by ID route (supports both auth users, admin, and guest checkout success verification)
+router.get('/orders/:id', optionalAuth, validateOrderId, getOrderById);
 
 // User routes
 router.get('/user/orders', authenticateAndCheckStatus, validateOrderQuery, getUserOrders);

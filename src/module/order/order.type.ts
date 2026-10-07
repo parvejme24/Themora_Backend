@@ -2,14 +2,15 @@ import { z } from "zod";
 
 // Order validation schemas
 export const createOrderSchema = z.object({
-  templateId: z.string().uuid("Invalid template ID"),
-  lemonsqueezyOrderId: z.string().min(1, "Lemon Squeezy order ID is required"),
+  templateId: z.string().uuid("Invalid template ID").optional(),
+  pricingPlanId: z.string().uuid("Invalid pricing plan ID").optional(),
+  lemonsqueezyOrderId: z.string().optional(),
   lemonsqueezyInvoiceId: z.string().optional(),
-  totalAmount: z.number().positive("Total amount must be positive"),
+  totalAmount: z.number().positive("Total amount must be positive").optional(),
   currency: z.string().default("USD"),
-  licenseType: z.enum(["SINGLE", "EXTENDED"]),
+  licenseType: z.enum(["SINGLE", "EXTENDED"]).default("SINGLE"),
   paymentMethod: z.string().optional(),
-  customerEmail: z.string().email("Invalid email address"),
+  customerEmail: z.string().email("Invalid email address").optional(),
   customerName: z.string().optional(),
   billingAddress: z.any().optional(),
   downloadLinks: z.array(z.string()).optional(),
@@ -21,7 +22,7 @@ export const updateOrderStatusSchema = z.object({
 });
 
 export const orderIdSchema = z.object({
-  id: z.string().uuid("Invalid order ID"),
+  id: z.string().min(1, "Order ID is required"),
 });
 
 export const orderQuerySchema = z.object({
