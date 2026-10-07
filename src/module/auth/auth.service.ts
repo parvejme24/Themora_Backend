@@ -35,9 +35,20 @@ class AuthService {
   // Register new user
   public async registerUser(data: IRegisterUser): Promise<IAuthResponse> {
     try {
+      const userFullName = (data.fullName || data.name || "").trim();
+      const normalizedEmail = data.email.trim().toLowerCase();
+
+      if (!userFullName) {
+        return {
+          success: false,
+          message: "Full name or name is required",
+          error: "Name is required",
+        };
+      }
+
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
-        where: { email: data.email },
+        where: { email: normalizedEmail },
       });
 
       if (existingUser) {
@@ -64,8 +75,8 @@ class AuthService {
       // Create user
       const user = await prisma.user.create({
         data: {
-          fullName: data.fullName,
-          email: data.email,
+          fullName: userFullName,
+          email: normalizedEmail,
           password: hashedPassword,
           nextAuthSecret,
           nextAuthExpiresAt: sessionExpiration,
@@ -101,12 +112,20 @@ class AuthService {
         };
       }
 
+      const {
+        password: _password,
+        otpCode: _otpCode,
+        otpPurpose: _otpPurpose,
+        otpExpiresAt: _otpExpiresAt,
+        ...safeUser
+      } = user;
+
       return {
         success: true,
         message:
           "User registered successfully. Please verify the OTP sent to your email.",
         data: {
-          user: user as any,
+          user: safeUser as any,
           nextAuthSecret: nextAuthSecret || undefined,
           expiresAt: sessionExpiration || undefined,
         },
@@ -125,8 +144,9 @@ class AuthService {
   public async loginUser(data: ILoginUser): Promise<IAuthResponse> {
     try {
       // Find user by email
+      const normalizedEmail = data.email.trim().toLowerCase();
       const user = await prisma.user.findUnique({
-        where: { email: data.email },
+        where: { email: normalizedEmail },
         include: { profile: true },
       });
 
@@ -193,11 +213,19 @@ class AuthService {
         include: { profile: true },
       });
 
+      const {
+        password: _password,
+        otpCode: _otpCode,
+        otpPurpose: _otpPurpose,
+        otpExpiresAt: _otpExpiresAt,
+        ...safeUser
+      } = updatedUser;
+
       return {
         success: true,
         message: "Login successful",
         data: {
-          user: updatedUser as any,
+          user: safeUser as any,
           nextAuthSecret,
           expiresAt: sessionExpiration,
         },
@@ -604,26 +632,51 @@ class AuthService {
     data: IUpdateProfile
   ): Promise<IAuthResponse> {
     try {
+      const { name, fullName, address, ...profileFields } = data;
+      const userFullName = (fullName || name || "").trim();
+
+      // Update User if fullName / name is provided
+      if (userFullName) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { fullName: userFullName },
+        });
+      }
+
+      // If address is passed and stateOrRegion / city is not, map address
+      const profileData: any = { ...profileFields };
+      if (address && !profileData.stateOrRegion) {
+        profileData.stateOrRegion = address;
+      }
+
+      // Remove undefined keys
+      Object.keys(profileData).forEach((key) => {
+        if (profileData[key] === undefined) {
+          delete profileData[key];
+        }
+      });
+
       // Check if profile exists
       const existingProfile = await prisma.userProfile.findUnique({
         where: { userId },
       });
 
-      let profile;
-      if (existingProfile) {
-        // Update existing profile
-        profile = await prisma.userProfile.update({
-          where: { userId },
-          data,
-        });
-      } else {
-        // Create new profile
-        profile = await prisma.userProfile.create({
-          data: {
-            userId,
-            ...data,
-          },
-        });
+      if (Object.keys(profileData).length > 0) {
+        if (existingProfile) {
+          // Update existing profile
+          await prisma.userProfile.update({
+            where: { userId },
+            data: profileData,
+          });
+        } else {
+          // Create new profile
+          await prisma.userProfile.create({
+            data: {
+              userId,
+              ...profileData,
+            },
+          });
+        }
       }
 
       // Get updated user with profile
@@ -632,10 +685,26 @@ class AuthService {
         include: { profile: true },
       });
 
+      if (!user) {
+        return {
+          success: false,
+          message: "User not found",
+          error: "User not found",
+        };
+      }
+
+      const {
+        password: _password,
+        otpCode: _otpCode,
+        otpPurpose: _otpPurpose,
+        otpExpiresAt: _otpExpiresAt,
+        ...safeUser
+      } = user;
+
       return {
         success: true,
         message: "Profile updated successfully",
-        data: { user: user as any },
+        data: { user: safeUser as any },
       };
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -663,10 +732,18 @@ class AuthService {
         };
       }
 
+      const {
+        password: _password,
+        otpCode: _otpCode,
+        otpPurpose: _otpPurpose,
+        otpExpiresAt: _otpExpiresAt,
+        ...safeUser
+      } = user;
+
       return {
         success: true,
         message: "User fetched successfully",
-        data: { user: user as any },
+        data: { user: safeUser as any },
       };
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -828,19 +905,24 @@ class AuthService {
         updateData.password = await bcrypt.hash(data.password, 12);
       }
 
-      // Prevent changing role for self from non-admin contexts (route already admin-guarded, but keep here too)
-      // Ensure only allowed fields will be persisted
-
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: updateData,
         include: { profile: true },
       });
 
+      const {
+        password: _password,
+        otpCode: _otpCode,
+        otpPurpose: _otpPurpose,
+        otpExpiresAt: _otpExpiresAt,
+        ...safeUser
+      } = updatedUser;
+
       return {
         success: true,
         message: "User updated successfully",
-        data: { user: updatedUser as any },
+        data: { user: safeUser as any },
       };
     } catch (error) {
       console.error("Error updating user:", error);
