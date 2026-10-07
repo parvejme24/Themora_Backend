@@ -36,21 +36,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration
-// app.use(
-//   cors({
-//     origin: process.env.FRONTEND_URL || [
-//       "http://localhost:3000",
-//       "http://localhost:3001",
-//       "http://localhost:5174",
-//       "https://tf-f-ts.vercel.app",
-//       "https://techfynite.vercel.app",
-//       "https://www.techfynite.com",
-//       "https://www.techfynite.org",
-//     ],
-//     credentials: true,
-//   })
-// );
 
 const rawOrigins = [
   env.FRONTEND_URL,
