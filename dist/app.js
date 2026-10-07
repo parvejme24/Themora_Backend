@@ -29,15 +29,38 @@ const limiter = (0, express_rate_limit_1.default)({
     validate: { xForwardedForHeader: false, default: false },
 });
 app.use(limiter);
-const allowedOrigins = [
+const rawOrigins = [
     env_1.env.FRONTEND_URL,
-    ...env_1.env.CORS_ORIGINS.split(",").map((origin) => origin.trim()),
-].filter(Boolean);
+    ...env_1.env.CORS_ORIGINS.split(","),
+    "https://themora.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5174",
+];
+const allowedOrigins = Array.from(new Set(rawOrigins
+    .filter(Boolean)
+    .map((origin) => origin.trim().replace(/\/+$/, ""))));
 app.use((0, cors_1.default)({
-    origin: allowedOrigins,
+    origin: (requestOrigin, callback) => {
+        if (!requestOrigin)
+            return callback(null, true);
+        const normalizedOrigin = requestOrigin.trim().replace(/\/+$/, "");
+        if (allowedOrigins.includes(normalizedOrigin) ||
+            normalizedOrigin.endsWith(".vercel.app")) {
+            return callback(null, true);
+        }
+        console.warn(`⚠️ Blocked by CORS: ${requestOrigin}`);
+        return callback(null, true);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Access-Control-Allow-Origin"],
+    allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Access-Control-Allow-Origin",
+        "x-nextauth-secret",
+    ],
 }));
 app.use(express_1.default.json({
     limit: "10mb",

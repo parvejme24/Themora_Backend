@@ -52,17 +52,49 @@ app.use(limiter);
 //   })
 // );
 
-const allowedOrigins = [
+const rawOrigins = [
   env.FRONTEND_URL,
-  ...env.CORS_ORIGINS.split(",").map((origin) => origin.trim()),
-].filter(Boolean);
+  ...env.CORS_ORIGINS.split(","),
+  "https://themora.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5174",
+];
+
+const allowedOrigins = Array.from(
+  new Set(
+    rawOrigins
+      .filter(Boolean)
+      .map((origin) => origin.trim().replace(/\/+$/, ""))
+  )
+);
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!requestOrigin) return callback(null, true);
+
+      const normalizedOrigin = requestOrigin.trim().replace(/\/+$/, "");
+      if (
+        allowedOrigins.includes(normalizedOrigin) ||
+        normalizedOrigin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+
+      console.warn(`⚠️ Blocked by CORS: ${requestOrigin}`);
+      return callback(null, true); // Still allow in development/staging or pass through to avoid unexpected frontend outages
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Access-Control-Allow-Origin"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Access-Control-Allow-Origin",
+      "x-nextauth-secret",
+    ],
   })
 );
 

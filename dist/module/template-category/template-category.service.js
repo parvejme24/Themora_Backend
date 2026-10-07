@@ -54,6 +54,11 @@ class TemplateCategoryService {
                     skip,
                     take: limit,
                     include: {
+                        _count: {
+                            select: {
+                                templates: true,
+                            },
+                        },
                         templates: {
                             select: {
                                 id: true,
@@ -74,8 +79,18 @@ class TemplateCategoryService {
                 database_1.prisma.templateCategory.count({ where }),
             ]);
             const totalPages = Math.ceil(total / limit);
+            const mappedCategories = categories.map((cat) => ({
+                id: cat.id,
+                title: cat.title,
+                slug: cat.slug,
+                image: cat.image,
+                templateCount: cat._count?.templates ?? cat.templates?.length ?? cat.templateCount ?? 0,
+                createdAt: cat.createdAt,
+                updatedAt: cat.updatedAt,
+                templates: cat.templates,
+            }));
             return {
-                categories,
+                categories: mappedCategories,
                 pagination: {
                     page,
                     limit,
@@ -95,6 +110,11 @@ class TemplateCategoryService {
             const category = await database_1.prisma.templateCategory.findUnique({
                 where: { id },
                 include: {
+                    _count: {
+                        select: {
+                            templates: true,
+                        },
+                    },
                     templates: {
                         select: {
                             id: true,
@@ -109,7 +129,12 @@ class TemplateCategoryService {
                     },
                 },
             });
-            return category;
+            if (!category)
+                return null;
+            return {
+                ...category,
+                templateCount: category._count?.templates ?? category.templates?.length ?? category.templateCount ?? 0,
+            };
         }
         catch (error) {
             throw new Error("Failed to fetch template category");

@@ -8,7 +8,7 @@ const envSchema = zod_1.z.object({
     DATABASE_URL: zod_1.z.string().min(1, "DATABASE_URL is required"),
     PORT: zod_1.z.coerce.number().int().min(1).max(65535).default(5050),
     FRONTEND_URL: zod_1.z.string().default("http://localhost:3000"),
-    CORS_ORIGINS: zod_1.z.string().default("http://localhost:3001,http://localhost:5174"),
+    CORS_ORIGINS: zod_1.z.string().default("http://localhost:3000,http://localhost:3001,http://localhost:5174,https://themora.vercel.app"),
     BCRYPT_ROUNDS: zod_1.z.coerce.number().int().min(4).max(31).default(12),
     SMTP_HOST: zod_1.z.string().default(""),
     SMTP_PORT: zod_1.z.string().default("587"),

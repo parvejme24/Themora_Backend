@@ -6,7 +6,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   PORT: z.coerce.number().int().min(1).max(65535).default(5050),
   FRONTEND_URL: z.string().default("http://localhost:3000"),
-  CORS_ORIGINS: z.string().default("http://localhost:3001,http://localhost:5174"),
+  CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001,http://localhost:5174,https://themora.vercel.app"),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(31).default(12),
   SMTP_HOST: z.string().default(""),
   SMTP_PORT: z.string().default("587"),
