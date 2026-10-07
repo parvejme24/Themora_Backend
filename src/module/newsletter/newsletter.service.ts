@@ -237,3 +237,5 @@ export class NewsletterService implements INewsletterService {
     }
   }
 }
+
+export const newsletterService = new NewsletterService();
