@@ -7,21 +7,25 @@ export const createBlogReview = async (req: Request, res: Response) => {
   try {
     const { blogId } = req.params;
     const user = (req as any).user;
+    const body = req.body;
     const reviewData = {
-      ...req.body,
+      ...body,
+      commentText: body.commentText || body.comment,
       blogId,
-      userId: user.id,
-      fullName: user.fullName,
-      email: user.email,
+      userId: user?.id || body.userId,
+      fullName: user?.fullName || body.fullName || body.name || "Reader",
+      email: user?.email || body.email,
     };
 
-    const hasReviewed = await blogReviewService.hasUserReviewed(blogId, user.id);
-    if (hasReviewed) {
-      return res.status(400).json({
-        success: false,
-        message: "You have already reviewed this blog",
-        error: "Duplicate review not allowed"
-      });
+    if (user?.id) {
+      const hasReviewed = await blogReviewService.hasUserReviewed(blogId, user.id);
+      if (hasReviewed) {
+        return res.status(400).json({
+          success: false,
+          message: "You have already reviewed this blog",
+          error: "Duplicate review not allowed",
+        });
+      }
     }
 
     const review = await blogReviewService.createBlogReview(reviewData);
@@ -45,15 +49,23 @@ export const createBlogReview = async (req: Request, res: Response) => {
 export const createBlogReviewReply = async (req: Request, res: Response) => {
   try {
     const { reviewId } = req.params;
-    const adminId = (req as any).user?.id;
-    if (!adminId) {
+    const admin = (req as any).user;
+    if (!admin?.id) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
         error: "Admin user not found in context",
       });
     }
-    const replyData = { ...req.body, reviewId, adminId } as any;
+    const body = req.body;
+    const replyData = {
+      ...body,
+      replyText: body.replyText || body.reply || body.comment,
+      reviewId,
+      adminId: admin.id,
+      fullName: admin.fullName || body.fullName || "Admin",
+      email: admin.email || body.email,
+    } as any;
 
     const reply = await blogReviewService.createBlogReviewReply(replyData);
 
