@@ -76,6 +76,11 @@ export class TemplateCategoryService implements ITemplateCategoryService {
           skip,
           take: limit,
           include: {
+            _count: {
+              select: {
+                templates: true,
+              },
+            },
             templates: {
               select: {
                 id: true,
@@ -98,8 +103,19 @@ export class TemplateCategoryService implements ITemplateCategoryService {
 
       const totalPages = Math.ceil(total / limit);
 
+      const mappedCategories = categories.map((cat: any) => ({
+        id: cat.id,
+        title: cat.title,
+        slug: cat.slug,
+        image: cat.image,
+        templateCount: cat._count?.templates ?? cat.templates?.length ?? cat.templateCount ?? 0,
+        createdAt: cat.createdAt,
+        updatedAt: cat.updatedAt,
+        templates: cat.templates,
+      }));
+
       return {
-        categories,
+        categories: mappedCategories as any,
         pagination: {
           page,
           limit,
@@ -120,6 +136,11 @@ export class TemplateCategoryService implements ITemplateCategoryService {
       const category = await prisma.templateCategory.findUnique({
         where: { id },
         include: {
+          _count: {
+            select: {
+              templates: true,
+            },
+          },
           templates: {
             select: {
               id: true,
@@ -135,7 +156,12 @@ export class TemplateCategoryService implements ITemplateCategoryService {
         },
       });
 
-      return category;
+      if (!category) return null;
+
+      return {
+        ...category,
+        templateCount: (category as any)._count?.templates ?? category.templates?.length ?? category.templateCount ?? 0,
+      } as any;
     } catch (error: any) {
       throw new Error("Failed to fetch template category");
     }
