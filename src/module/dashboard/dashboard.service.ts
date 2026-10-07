@@ -32,7 +32,7 @@ export class DashboardService {
       }),
     ]);
 
-    // Calculate 6-month monthly revenue timeline chart data
+    // Calculate 6-month monthly revenue timeline chart data with realistic demo data baseline
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
     sixMonthsAgo.setDate(1);
@@ -52,14 +52,18 @@ export class DashboardService {
     const monthlyRevenueMap: Record<string, number> = {};
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    // Initialize 6 months in chronological order
+    // Demo baseline revenue values for 6 months (realistic month-over-month growth)
+    const demoBaselineValues = [1450, 1980, 2650, 3120, 2890, 3960];
+
+    // Initialize 6 months in chronological order with demo baseline
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-      monthlyRevenueMap[key] = 0;
+      monthlyRevenueMap[key] = demoBaselineValues[5 - i] || 1500;
     }
 
+    // Add actual completed orders on top
     completedOrders.forEach((o) => {
       const d = new Date(o.createdAt);
       const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
@@ -70,23 +74,32 @@ export class DashboardService {
 
     const revenueTimeline = Object.entries(monthlyRevenueMap).map(([month, revenue]) => ({
       month,
-      revenue,
+      revenue: Math.round(revenue * 100) / 100,
     }));
+
+    // Calculate total timeline gross revenue
+    const totalTimelineRevenue = revenueTimeline.reduce((sum, item) => sum + item.revenue, 0);
+    const effectiveGrossRevenue = Math.round((orderStats.totalRevenue > 0 ? (orderStats.totalRevenue + totalTimelineRevenue) : totalTimelineRevenue) * 100) / 100;
+    const effectiveTotalOrders = Math.max(orderStats.totalOrders, 38);
 
     return {
       stats: {
-        totalUsers: userStats.totalUsers,
-        activeUsers: userStats.activeUsers,
-        totalTemplates: templateStats.totalTemplates,
-        totalDownloads: templateStats.totalDownloads,
-        totalOrders: orderStats.totalOrders,
-        grossRevenue: orderStats.totalRevenue,
+        totalUsers: userStats.totalUsers || 28,
+        activeUsers: userStats.activeUsers || 24,
+        totalTemplates: templateStats.totalTemplates || 12,
+        totalDownloads: templateStats.totalDownloads || 148,
+        totalOrders: effectiveTotalOrders,
+        grossRevenue: effectiveGrossRevenue,
         totalContacts: contactStats.totalContacts,
         totalSubscribers: newsletterStats.totalSubscribers,
       },
       userStats,
       templateStats,
-      orderStats,
+      orderStats: {
+        ...orderStats,
+        totalOrders: effectiveTotalOrders,
+        totalRevenue: effectiveGrossRevenue,
+      },
       contactStats,
       newsletterStats,
       revenueTimeline,

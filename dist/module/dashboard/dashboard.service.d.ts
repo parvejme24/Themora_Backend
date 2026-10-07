@@ -12,7 +12,20 @@ export declare class DashboardService {
         };
         userStats: import("../auth/auth.interface").IUserStats;
         templateStats: import("../template/template.type").TemplateStats;
-        orderStats: import("../order/order.type").OrderStats;
+        orderStats: {
+            totalOrders: number;
+            totalRevenue: number;
+            ordersByStatus: Array<{
+                status: string;
+                count: number;
+                revenue: number;
+            }>;
+            ordersByLicenseType: Array<{
+                licenseType: string;
+                count: number;
+                revenue: number;
+            }>;
+        };
         contactStats: import("../contact/contact.interface").IContactStats;
         newsletterStats: import("../newsletter/newsletter.type").NewsletterStats;
         revenueTimeline: {
