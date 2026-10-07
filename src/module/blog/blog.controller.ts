@@ -520,7 +520,8 @@ export const addBlogReaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).user?.id;
-    const { reactionType } = req.body;
+    const rawType = req.body.reactionType || req.body.reaction || req.body.type || "LIKE";
+    const reactionType = String(rawType).toUpperCase();
     
     if (!userId) {
       return res.status(400).json({
@@ -530,7 +531,11 @@ export const addBlogReaction = async (req: Request, res: Response) => {
       });
     }
     
-    const result = await blogService.addReaction(id, userId, reactionType);
+    const result = await blogService.addReaction(
+      id,
+      userId,
+      reactionType as "LIKE" | "LOVE" | "HAHA" | "WOW" | "SAD" | "ANGRY"
+    );
     
     return res.status(200).json({
       success: true,

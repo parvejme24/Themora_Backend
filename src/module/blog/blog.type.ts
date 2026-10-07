@@ -78,8 +78,28 @@ export const blogStatusSchema = z.object({
 // Blog reaction schema
 export const blogReactionSchema = z.object({
   userId: z.string().uuid("Invalid user ID").optional(),
-  reactionType: z.enum(['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY']),
-});
+  reactionType: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val.toUpperCase() : undefined)),
+  reaction: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val.toUpperCase() : undefined)),
+  type: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val.toUpperCase() : undefined)),
+}).refine(
+  (data) => {
+    const r = data.reactionType || data.reaction || data.type;
+    return r && ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY'].includes(r);
+  },
+  {
+    message: "Valid reactionType is required: LIKE, LOVE, HAHA, WOW, SAD, or ANGRY",
+    path: ["reactionType"],
+  }
+);
 
 // Type exports
 export type CreateBlogType = z.infer<typeof createBlogSchema>;
