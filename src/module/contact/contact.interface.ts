@@ -46,6 +46,12 @@ export interface IContactStats {
   contactsLastMonth: number;
   averageRepliesPerContact: number;
   recentContacts: IContact[];
+  statusCounts?: {
+    PENDING: number;
+    IN_REVIEW: number;
+    REPLIED: number;
+    CLOSED: number;
+  };
 }
 
 // Contact reply interface
