@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 // Blog review creation schema
-// Public review: only name, email, comment required; userId optional; rating optional
 export const createBlogReviewSchema = z.object({
-  fullName: z.string().min(1, "Full name is required").max(100, "Full name must be less than 100 characters"),
-  email: z.string().email("Invalid email address"),
-  commentText: z.string().min(1, "Comment is required").max(1000, "Comment must be less than 1000 characters"),
+  fullName: z.string().max(100, "Full name must be less than 100 characters").optional(),
+  name: z.string().max(100).optional(),
+  email: z.string().email("Invalid email address").optional(),
+  commentText: z.string().max(1000, "Comment must be less than 1000 characters").optional(),
+  comment: z.string().max(1000).optional(),
   userId: z.string().uuid("Invalid user ID").optional(),
   rating: z
     .union([
@@ -15,18 +16,29 @@ export const createBlogReviewSchema = z.object({
     .transform((v) => (typeof v === 'string' ? Number(v) : v))
     .pipe(z.number().min(1).max(5))
     .optional(),
-  photoUrl: z.string().url("Invalid photo URL").optional(),
-});
+  photoUrl: z.string().url("Invalid photo URL").optional().nullable(),
+}).refine(
+  (data) => (data.commentText && data.commentText.trim().length > 0) || (data.comment && data.comment.trim().length > 0),
+  { message: "Comment text is required", path: ["commentText"] }
+);
 
 // Blog review reply creation schema
-// Public reply: only name, email, replyText required; userId optional
 export const createBlogReviewReplySchema = z.object({
-  fullName: z.string().min(1, "Full name is required").max(100, "Full name must be less than 100 characters"),
-  email: z.string().email("Invalid email address"),
-  replyText: z.string().min(1, "Reply is required").max(500, "Reply must be less than 500 characters"),
+  fullName: z.string().max(100, "Full name must be less than 100 characters").optional(),
+  name: z.string().max(100).optional(),
+  email: z.string().email("Invalid email address").optional(),
+  replyText: z.string().max(500, "Reply must be less than 500 characters").optional(),
+  reply: z.string().max(500).optional(),
+  comment: z.string().max(500).optional(),
   userId: z.string().uuid("Invalid user ID").optional(),
-  photoUrl: z.string().url("Invalid photo URL").optional(),
-});
+  photoUrl: z.string().url("Invalid photo URL").optional().nullable(),
+}).refine(
+  (data) =>
+    (data.replyText && data.replyText.trim().length > 0) ||
+    (data.reply && data.reply.trim().length > 0) ||
+    (data.comment && data.comment.trim().length > 0),
+  { message: "Reply text is required", path: ["replyText"] }
+);
 
 // Blog review query schema
 export const blogReviewQuerySchema = z.object({
