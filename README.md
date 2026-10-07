@@ -14,7 +14,7 @@
 
 **A scalable, high-performance RESTful API and microservice-ready backend powering Themora — a full-stack digital asset marketplace, developer theme ecosystem, and content publishing platform.**
 
-[🌐 Live Platform](https://themora.vercel.app) • [📖 API Reference](#-complete-api-reference) • [🏛️ System Architecture](#️-system-architecture) • [💼 Resume Highlights](#-resume--portfolio-bullet-points)
+[🌐 Live Platform](https://themora.vercel.app) • [👨‍💻 Portfolio](https://mdparvej.dev) • [📖 API Reference](#-complete-api-reference) • [🏛️ System Architecture](#️-system-architecture) • [💼 Resume Highlights](#-resume--portfolio-bullet-points)
 
 </div>
 
@@ -412,9 +412,9 @@ Here are impactful, recruiter-ready bullet points you can use on your resume and
 ## 👨‍💻 Author & Connect
 
 **Md Parvej**  
+- **Portfolio**: [https://mdparvej.dev](https://mdparvej.dev)
 - **Live Demo**: [https://themora.vercel.app](https://themora.vercel.app)
 - **GitHub**: [@parvejme24](https://github.com/parvejme24)
-- **Email**: [mdparvejme24@gmail.com](mailto:mdparvejme24@gmail.com)
 
 ---
 
