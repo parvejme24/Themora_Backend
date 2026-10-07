@@ -40,9 +40,9 @@ const order_service_1 = require("../order/order.service");
 const templateService = new template_service_1.TemplateService();
 const orderService = new order_service_1.OrderService();
 const userHasTemplateAccess = async (userId, templateId) => {
-    const [license, planEntitlement] = await Promise.all([
-        database_1.prisma.license.findFirst({
-            where: { userId, templateId, isActive: true, order: { status: "COMPLETED" } },
+    const [completedOrder, planEntitlement] = await Promise.all([
+        database_1.prisma.orderInvoice.findFirst({
+            where: { userId, templateId, status: "COMPLETED" },
             select: { id: true },
         }),
         database_1.prisma.planEntitlement.findFirst({
@@ -50,7 +50,7 @@ const userHasTemplateAccess = async (userId, templateId) => {
             select: { id: true },
         }),
     ]);
-    return Boolean(license || planEntitlement);
+    return Boolean(completedOrder || planEntitlement);
 };
 const getAllTemplates = async (req, res) => {
     try {

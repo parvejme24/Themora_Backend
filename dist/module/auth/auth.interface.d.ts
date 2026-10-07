@@ -3,7 +3,8 @@ export interface IUser extends User {
     profile?: UserProfile;
 }
 export interface IRegisterUser {
-    fullName: string;
+    fullName?: string;
+    name?: string;
     email: string;
     password: string;
     clientToken?: string;
@@ -70,7 +71,9 @@ export interface IUpdateProfile {
     avatarUrl?: string;
     designation?: string;
     fullName?: string;
+    name?: string;
     phone?: string;
+    address?: string;
     country?: string;
     city?: string;
     stateOrRegion?: string;

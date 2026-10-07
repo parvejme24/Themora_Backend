@@ -12,4 +12,5 @@ export declare class TemplateService implements ITemplateService {
     getNewArrivals(limit?: number): Promise<Template[]>;
     getTemplateStats(): Promise<TemplateStats>;
 }
+export declare const templateService: TemplateService;
 //# sourceMappingURL=template.service.d.ts.map

@@ -7,6 +7,8 @@ const cache_1 = require("../../middleware/cache");
 const pricing_validate_1 = require("./pricing.validate");
 const router = (0, express_1.Router)();
 router.get("/pricing", (0, cache_1.cacheResponse)(60), pricing_controller_1.getPricingPlans);
+router.get("/pricing/plans", (0, cache_1.cacheResponse)(60), pricing_controller_1.getPricingPlans);
+router.get("/pricing-plans", (0, cache_1.cacheResponse)(60), pricing_controller_1.getPricingPlans);
 router.get("/admin/pricing", authMiddleware_1.authenticateAdminAndCheckStatus, pricing_controller_1.getAllPricingPlans);
 router.post("/pricing", authMiddleware_1.authenticateAdminAndCheckStatus, pricing_validate_1.validateCreatePricingPlan, pricing_controller_1.createPricingPlan);
 router.get("/pricing/:id", pricing_validate_1.validatePricingPlanId, pricing_controller_1.getPricingPlan);

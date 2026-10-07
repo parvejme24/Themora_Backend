@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadBuffersToCloudinary = exports.extractPublicId = exports.deleteCloudinaryFile = exports.getFileUrl = exports.handleUploadError = exports.uploadArchiveFile = exports.uploadBufferToCloudinary = exports.uploadImageMemory = exports.uploadTemplateImageCloudinary = exports.uploadAvatarImageCloudinary = exports.uploadBlogImageCloudinary = exports.uploadCategoryImageCloudinary = exports.debugCloudinaryConfig = exports.cloudinaryHealthCheck = void 0;
+exports.uploadBuffersToCloudinary = exports.extractPublicId = exports.deleteCloudinaryFile = exports.getFileUrl = exports.handleUploadError = exports.uploadArchiveFile = exports.uploadBufferToCloudinary = exports.uploadImageMemory = exports.uploadTemplateImageCloudinary = exports.getUploadedFile = exports.uploadAvatarImageCloudinary = exports.uploadBlogImageCloudinary = exports.uploadCategoryImageCloudinary = exports.debugCloudinaryConfig = exports.cloudinaryHealthCheck = void 0;
 const multer_1 = __importDefault(require("multer"));
 const cloudinary_1 = require("cloudinary");
 const secret_1 = require("../config/secret");
@@ -115,7 +115,10 @@ exports.uploadCategoryImageCloudinary = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     fileFilter: imageFilter,
     limits: { fileSize: 5 * 1024 * 1024 },
-}).single("image");
+}).fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'file', maxCount: 1 }
+]);
 exports.uploadBlogImageCloudinary = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     fileFilter: imageFilter,
@@ -125,7 +128,28 @@ exports.uploadAvatarImageCloudinary = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     fileFilter: imageFilter,
     limits: { fileSize: 5 * 1024 * 1024 },
-}).single("image");
+}).fields([
+    { name: "image", maxCount: 1 },
+    { name: "avatar", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+]);
+const getUploadedFile = (req) => {
+    if (req.file)
+        return req.file;
+    if (req.files) {
+        if (Array.isArray(req.files)) {
+            return req.files[0];
+        }
+        if (req.files.image && req.files.image[0])
+            return req.files.image[0];
+        if (req.files.avatar && req.files.avatar[0])
+            return req.files.avatar[0];
+        if (req.files.file && req.files.file[0])
+            return req.files.file[0];
+    }
+    return undefined;
+};
+exports.getUploadedFile = getUploadedFile;
 exports.uploadTemplateImageCloudinary = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     fileFilter: templateFileFilter,

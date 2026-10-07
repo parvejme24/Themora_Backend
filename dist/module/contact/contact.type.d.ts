@@ -1,12 +1,14 @@
 import { z } from "zod";
 export declare const createContactSchema: z.ZodObject<{
     body: z.ZodObject<{
-        projectDetails: z.ZodString;
-        budget: z.ZodString;
-        fullName: z.ZodString;
+        projectDetails: z.ZodOptional<z.ZodString>;
+        message: z.ZodOptional<z.ZodString>;
+        budget: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        fullName: z.ZodOptional<z.ZodString>;
+        name: z.ZodOptional<z.ZodString>;
         email: z.ZodString;
-        companyName: z.ZodString;
-        serviceRequired: z.ZodString;
+        companyName: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+        serviceRequired: z.ZodDefault<z.ZodOptional<z.ZodString>>;
         userId: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>;
 }, z.core.$strip>;

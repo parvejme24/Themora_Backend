@@ -17,9 +17,21 @@ router.post("/auth/google-login", auth_validate_1.validateGoogleLogin, auth_cont
 router.post("/auth/validate-session", auth_validate_1.validateSessionValidation, auth_controller_1.validateSession);
 router.post("/auth/logout", auth_validate_1.validateLogout, auth_controller_1.logoutUser);
 router.post("/auth/change-password", authMiddleware_1.authenticateAndCheckStatus, auth_validate_1.validateChangePassword, auth_controller_1.changePassword);
-router.put("/auth/profile", authMiddleware_1.authenticateAndCheckStatus, auth_validate_1.validateUpdateProfile, auth_controller_1.updateProfile);
+router.put("/auth/profile", authMiddleware_1.authenticateAndCheckStatus, (req, res, next) => {
+    const contentType = req.headers["content-type"] || "";
+    if (contentType.includes("multipart/form-data")) {
+        cloudinary_upload_1.uploadAvatarImageCloudinary(req, res, (err) => {
+            if (err)
+                return (0, cloudinary_upload_1.handleUploadError)(err, req, res, next);
+            return next();
+        });
+    }
+    else {
+        return next();
+    }
+}, auth_validate_1.validateUpdateProfile, auth_controller_1.updateProfile);
 router.put("/auth/profile/avatar", authMiddleware_1.authenticateAndCheckStatus, (req, res, next) => {
-    cloudinary_upload_1.uploadImageMemory(req, res, (err) => {
+    cloudinary_upload_1.uploadAvatarImageCloudinary(req, res, (err) => {
         if (err)
             return (0, cloudinary_upload_1.handleUploadError)(err, req, res, next);
         return next();
@@ -34,6 +46,7 @@ router.patch("/auth/users/:id/ban", authMiddleware_1.authenticateAdminAndCheckSt
 router.patch("/auth/users/:id/unban", authMiddleware_1.authenticateAdminAndCheckStatus, auth_validate_1.validateUserId, auth_controller_1.unbanUser);
 router.patch("/auth/users/:id/trash", authMiddleware_1.authenticateAdminAndCheckStatus, auth_validate_1.validateUserId, auth_controller_1.trashUser);
 router.patch("/auth/users/:id/restore", authMiddleware_1.authenticateAdminAndCheckStatus, auth_validate_1.validateUserId, auth_controller_1.restoreUser);
-router.patch("/auth/users/:id/role", authMiddleware_1.authenticateAdminAndCheckStatus, auth_validate_1.validateUserId, auth_controller_1.changeUserRole);
+router.patch("/auth/users/:id/role", authMiddleware_1.authenticateAdminAndCheckStatus, auth_validate_1.validateUserId, auth_validate_1.validateChangeUserRole, auth_controller_1.changeUserRole);
+router.put("/auth/users/:id/role", authMiddleware_1.authenticateAdminAndCheckStatus, auth_validate_1.validateUserId, auth_validate_1.validateChangeUserRole, auth_controller_1.changeUserRole);
 exports.default = router;
 //# sourceMappingURL=auth.route.js.map

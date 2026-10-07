@@ -9,4 +9,5 @@ export declare class NewsletterService implements INewsletterService {
     }>;
     getNewsletterStats(period?: string, startDate?: string, endDate?: string): Promise<NewsletterStats>;
 }
+export declare const newsletterService: NewsletterService;
 //# sourceMappingURL=newsletter.service.d.ts.map

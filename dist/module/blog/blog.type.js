@@ -62,6 +62,23 @@ exports.blogStatusSchema = zod_1.z.object({
 });
 exports.blogReactionSchema = zod_1.z.object({
     userId: zod_1.z.string().uuid("Invalid user ID").optional(),
-    reactionType: zod_1.z.enum(['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY']),
+    reactionType: zod_1.z
+        .string()
+        .optional()
+        .transform((val) => (val ? val.toUpperCase() : undefined)),
+    reaction: zod_1.z
+        .string()
+        .optional()
+        .transform((val) => (val ? val.toUpperCase() : undefined)),
+    type: zod_1.z
+        .string()
+        .optional()
+        .transform((val) => (val ? val.toUpperCase() : undefined)),
+}).refine((data) => {
+    const r = data.reactionType || data.reaction || data.type;
+    return r && ['LIKE', 'LOVE', 'HAHA', 'WOW', 'SAD', 'ANGRY'].includes(r);
+}, {
+    message: "Valid reactionType is required: LIKE, LOVE, HAHA, WOW, SAD, or ANGRY",
+    path: ["reactionType"],
 });
 //# sourceMappingURL=blog.type.js.map

@@ -62,11 +62,14 @@ const getContactsByUserEmail = async (req, res) => {
         if (user?.role !== "ADMIN" && user?.email?.toLowerCase() !== userEmail.toLowerCase()) {
             return res.status(403).json({ success: false, message: "You can only view contact requests for your own account" });
         }
-        const contacts = await contact_service_1.contactService.getContactsByUserEmail(userEmail);
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 10;
+        const result = await contact_service_1.contactService.getContactsByUserEmail(userEmail, page, limit);
         return res.status(200).json({
             success: true,
             message: "User contacts fetched successfully",
-            data: contacts,
+            data: result.contacts,
+            pagination: result.pagination,
         });
     }
     catch (error) {
@@ -81,9 +84,15 @@ const getContactsByUserEmail = async (req, res) => {
 exports.getContactsByUserEmail = getContactsByUserEmail;
 const addNewContact = async (req, res) => {
     try {
+        const rawData = req.validatedBody || req.body;
         const contactData = {
-            ...(req.validatedBody || req.body),
-            userId: req.user?.id,
+            fullName: rawData.fullName || rawData.name || "Customer",
+            email: rawData.email,
+            projectDetails: rawData.projectDetails || rawData.message || "No details provided",
+            budget: rawData.budget || "Flexible",
+            companyName: rawData.companyName || "N/A",
+            serviceRequired: rawData.serviceRequired || rawData.service || "General Inquiry",
+            userId: req.user?.id || rawData.userId,
         };
         const contact = await contact_service_1.contactService.createContact(contactData);
         let notificationSent = false;

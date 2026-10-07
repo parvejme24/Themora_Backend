@@ -12,7 +12,17 @@ export declare class ContactService {
         };
     }>;
     getContactById(id: string): Promise<IContact | null>;
-    getContactsByUserEmail(userEmail: string): Promise<IContact[]>;
+    getContactsByUserEmail(userEmail: string, page?: number, limit?: number): Promise<{
+        contacts: IContact[];
+        pagination: {
+            page: number;
+            limit: number;
+            total: number;
+            totalPages: number;
+            hasNext: boolean;
+            hasPrev: boolean;
+        };
+    }>;
     createContact(data: ICreateContact): Promise<IContact>;
     updateContact(id: string, data: IUpdateContact): Promise<IContact | null>;
     deleteContact(id: string): Promise<boolean>;

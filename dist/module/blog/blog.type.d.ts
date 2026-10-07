@@ -62,14 +62,9 @@ export declare const blogStatusSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const blogReactionSchema: z.ZodObject<{
     userId: z.ZodOptional<z.ZodString>;
-    reactionType: z.ZodEnum<{
-        LIKE: "LIKE";
-        LOVE: "LOVE";
-        HAHA: "HAHA";
-        WOW: "WOW";
-        SAD: "SAD";
-        ANGRY: "ANGRY";
-    }>;
+    reactionType: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<string | undefined, string | undefined>>;
+    reaction: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<string | undefined, string | undefined>>;
+    type: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<string | undefined, string | undefined>>;
 }, z.core.$strip>;
 export type CreateBlogType = z.infer<typeof createBlogSchema>;
 export type UpdateBlogType = z.infer<typeof updateBlogSchema>;

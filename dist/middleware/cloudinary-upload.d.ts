@@ -6,6 +6,7 @@ export declare const debugCloudinaryConfig: () => void;
 export declare const uploadCategoryImageCloudinary: import("express").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>;
 export declare const uploadBlogImageCloudinary: import("express").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>;
 export declare const uploadAvatarImageCloudinary: import("express").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>;
+export declare const getUploadedFile: (req: any) => Express.Multer.File | undefined;
 export declare const uploadTemplateImageCloudinary: import("express").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>;
 export declare const uploadImageMemory: import("express").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>>;
 export declare const uploadBufferToCloudinary: (file: Express.Multer.File, folder?: string) => Promise<{

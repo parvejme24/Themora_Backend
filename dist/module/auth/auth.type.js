@@ -1,12 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.logoutSchema = exports.resetPasswordWithOtpSchema = exports.verifyPasswordResetOtpSchema = exports.requestPasswordResetSchema = exports.resendOtpSchema = exports.verifyOtpSchema = exports.sessionValidationSchema = exports.userIdSchema = exports.userQuerySchema = exports.updateProfileSchema = exports.changePasswordSchema = exports.nextAuthSessionSchema = exports.googleLoginSchema = exports.loginUserSchema = exports.registerUserSchema = void 0;
+exports.changeUserRoleSchema = exports.logoutSchema = exports.resetPasswordWithOtpSchema = exports.verifyPasswordResetOtpSchema = exports.requestPasswordResetSchema = exports.resendOtpSchema = exports.verifyOtpSchema = exports.sessionValidationSchema = exports.userIdSchema = exports.userQuerySchema = exports.updateProfileSchema = exports.changePasswordSchema = exports.nextAuthSessionSchema = exports.googleLoginSchema = exports.loginUserSchema = exports.registerUserSchema = void 0;
 const zod_1 = require("zod");
-exports.registerUserSchema = zod_1.z.object({
-    fullName: zod_1.z.string().min(2, "Full name must be at least 2 characters").max(100, "Full name must be less than 100 characters"),
+exports.registerUserSchema = zod_1.z
+    .object({
+    fullName: zod_1.z.string().min(2, "Full name must be at least 2 characters").max(100, "Full name must be less than 100 characters").optional(),
+    name: zod_1.z.string().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters").optional(),
     email: zod_1.z.string().email("Invalid email address"),
     password: zod_1.z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
     clientToken: zod_1.z.string().min(10, "clientToken must be at least 10 characters").optional(),
+})
+    .refine((data) => Boolean(data.fullName || data.name), {
+    message: "Full name or name is required",
+    path: ["name"],
 });
 exports.loginUserSchema = zod_1.z.object({
     email: zod_1.z.string().email("Invalid email address"),
@@ -33,9 +39,12 @@ exports.changePasswordSchema = zod_1.z.object({
     newPassword: zod_1.z.string().min(6, "New password must be at least 6 characters").max(100, "New password must be less than 100 characters"),
 });
 exports.updateProfileSchema = zod_1.z.object({
-    avatarUrl: zod_1.z.string().url("Invalid avatar URL").optional(),
+    name: zod_1.z.string().max(100, "Name must be less than 100 characters").optional(),
+    fullName: zod_1.z.string().max(100, "Full name must be less than 100 characters").optional(),
+    avatarUrl: zod_1.z.string().url("Invalid avatar URL").optional().or(zod_1.z.literal("")),
     designation: zod_1.z.string().max(100, "Designation must be less than 100 characters").optional(),
     phone: zod_1.z.string().max(20, "Phone must be less than 20 characters").optional(),
+    address: zod_1.z.string().max(200, "Address must be less than 200 characters").optional(),
     country: zod_1.z.string().max(50, "Country must be less than 50 characters").optional(),
     city: zod_1.z.string().max(50, "City must be less than 50 characters").optional(),
     stateOrRegion: zod_1.z.string().max(50, "State or region must be less than 50 characters").optional(),
@@ -75,6 +84,10 @@ exports.resetPasswordWithOtpSchema = zod_1.z.object({
     newPassword: zod_1.z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
 });
 exports.logoutSchema = zod_1.z.object({
-    nextAuthSecret: zod_1.z.string().min(1, "NextAuth secret is required"),
+    nextAuthSecret: zod_1.z.string().min(1).optional(),
+    token: zod_1.z.string().min(1).optional(),
+}).optional();
+exports.changeUserRoleSchema = zod_1.z.object({
+    role: zod_1.z.enum(["ADMIN", "USER"]),
 });
 //# sourceMappingURL=auth.type.js.map

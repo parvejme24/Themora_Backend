@@ -4,13 +4,21 @@ exports.userEmailParamsSchema = exports.contactParamsSchema = exports.createCont
 const zod_1 = require("zod");
 exports.createContactSchema = zod_1.z.object({
     body: zod_1.z.object({
-        projectDetails: zod_1.z.string().min(10, "Project details must be at least 10 characters"),
-        budget: zod_1.z.string().min(1, "Budget is required"),
-        fullName: zod_1.z.string().min(2, "Full name must be at least 2 characters"),
+        projectDetails: zod_1.z.string().optional(),
+        message: zod_1.z.string().optional(),
+        budget: zod_1.z.string().optional().default("Flexible"),
+        fullName: zod_1.z.string().optional(),
+        name: zod_1.z.string().optional(),
         email: zod_1.z.string().email("Invalid email format"),
-        companyName: zod_1.z.string().min(1, "Company name is required"),
-        serviceRequired: zod_1.z.string().min(1, "Service required is mandatory"),
+        companyName: zod_1.z.string().optional().default("N/A"),
+        serviceRequired: zod_1.z.string().optional().default("General Inquiry"),
         userId: zod_1.z.string().uuid().optional(),
+    }).refine((data) => (data.projectDetails && data.projectDetails.length >= 3) || (data.message && data.message.length >= 3), {
+        message: "Message or project details must be at least 3 characters",
+        path: ["message"],
+    }).refine((data) => (data.fullName && data.fullName.length >= 2) || (data.name && data.name.length >= 2), {
+        message: "Full name or name is required",
+        path: ["fullName"],
     }),
 });
 exports.updateContactSchema = zod_1.z.object({

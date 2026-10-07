@@ -20,4 +20,5 @@ export declare class OrderService {
         totalRevenue: number;
     } | null)[]>;
 }
+export declare const orderService: OrderService;
 //# sourceMappingURL=order.service.d.ts.map

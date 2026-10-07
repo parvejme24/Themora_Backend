@@ -139,7 +139,23 @@ const validateSession = async (req, res) => {
 exports.validateSession = validateSession;
 const logoutUser = async (req, res) => {
     try {
-        const { nextAuthSecret } = req.body;
+        let nextAuthSecret = req.body?.nextAuthSecret || req.body?.token;
+        if (!nextAuthSecret) {
+            const authHeader = req.headers["authorization"];
+            if (authHeader && authHeader.startsWith("Bearer ")) {
+                nextAuthSecret = authHeader.slice("Bearer ".length);
+            }
+            else if (req.headers["x-nextauth-secret"]) {
+                nextAuthSecret = req.headers["x-nextauth-secret"];
+            }
+        }
+        if (!nextAuthSecret) {
+            return res.status(400).json({
+                success: false,
+                message: "Token or nextAuthSecret is required for logout",
+                error: "Missing token",
+            });
+        }
         const result = await auth_service_1.authService.logoutUser(nextAuthSecret);
         if (!result.success) {
             return res.status(400).json(result);
@@ -192,7 +208,17 @@ const updateProfile = async (req, res) => {
                 error: "User not authenticated",
             });
         }
-        const result = await auth_service_1.authService.updateProfile(userId, req.body);
+        const file = (0, cloudinary_upload_1.getUploadedFile)(req);
+        let avatarUrl = req.body?.avatarUrl;
+        if (file) {
+            const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(file, "themora/avatars");
+            avatarUrl = uploaded.url;
+        }
+        const updateData = {
+            ...req.body,
+            ...(avatarUrl ? { avatarUrl } : {}),
+        };
+        const result = await auth_service_1.authService.updateProfile(userId, updateData);
         if (!result.success) {
             return res.status(400).json(result);
         }
@@ -218,14 +244,15 @@ const updateAvatarImage = async (req, res) => {
                 error: "User not authenticated",
             });
         }
-        if (!req.file) {
+        const file = (0, cloudinary_upload_1.getUploadedFile)(req);
+        if (!file) {
             return res.status(400).json({
                 success: false,
-                message: "No image uploaded",
+                message: "No image uploaded. Please provide an image file under 'image' or 'avatar' field",
                 error: "Missing file",
             });
         }
-        const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(req.file);
+        const uploaded = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(file, "themora/avatars");
         const url = uploaded.url;
         const result = await auth_service_1.authService.updateProfile(userId, { avatarUrl: url });
         if (!result.success) {
@@ -450,7 +477,7 @@ exports.restoreUser = restoreUser;
 const changeUserRole = async (req, res) => {
     try {
         const { id } = req.params;
-        const { role } = req.body;
+        const role = (req.body?.role || "").toUpperCase();
         if (!role || !["ADMIN", "USER"].includes(role)) {
             return res.status(400).json({
                 success: false,
@@ -458,7 +485,7 @@ const changeUserRole = async (req, res) => {
                 error: "Invalid role",
             });
         }
-        const result = await auth_service_1.authService.updateUser(id, { role });
+        const result = await auth_service_1.authService.updateUser(id, { role: role });
         if (!result.success) {
             return res.status(400).json(result);
         }

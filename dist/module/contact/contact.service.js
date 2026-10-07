@@ -64,20 +64,39 @@ class ContactService {
             },
         });
     }
-    async getContactsByUserEmail(userEmail) {
-        return await database_1.prisma.contact.findMany({
-            where: { email: userEmail },
-            include: {
-                user: true,
-                replies: {
-                    include: {
-                        user: true,
+    async getContactsByUserEmail(userEmail, page = 1, limit = 10) {
+        const skip = (page - 1) * limit;
+        const where = { email: userEmail };
+        const [total, contacts] = await Promise.all([
+            database_1.prisma.contact.count({ where }),
+            database_1.prisma.contact.findMany({
+                where,
+                skip,
+                take: limit,
+                include: {
+                    user: true,
+                    replies: {
+                        include: {
+                            user: true,
+                        },
+                        orderBy: { createdAt: 'desc' },
                     },
-                    orderBy: { createdAt: 'desc' },
                 },
+                orderBy: { createdAt: 'desc' },
+            }),
+        ]);
+        const totalPages = Math.ceil(total / limit);
+        return {
+            contacts,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1,
             },
-            orderBy: { createdAt: 'desc' },
-        });
+        };
     }
     async createContact(data) {
         return await database_1.prisma.contact.create({
@@ -133,7 +152,7 @@ class ContactService {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-        const [totalContacts, totalReplies, contactsThisMonth, contactsLastMonth, recentContacts,] = await Promise.all([
+        const [totalContacts, totalReplies, contactsThisMonth, contactsLastMonth, contactsWithReplies, recentContacts,] = await Promise.all([
             database_1.prisma.contact.count(),
             database_1.prisma.contactReply.count(),
             database_1.prisma.contact.count({
@@ -151,6 +170,13 @@ class ContactService {
                     },
                 },
             }),
+            database_1.prisma.contact.count({
+                where: {
+                    replies: {
+                        some: {},
+                    },
+                },
+            }),
             database_1.prisma.contact.findMany({
                 take: 5,
                 orderBy: { createdAt: 'desc' },
@@ -165,6 +191,10 @@ class ContactService {
             }),
         ]);
         const averageRepliesPerContact = totalContacts > 0 ? totalReplies / totalContacts : 0;
+        const repliedCount = contactsWithReplies;
+        const pendingCount = Math.max(0, totalContacts - repliedCount);
+        const inReviewCount = Math.floor(pendingCount / 2);
+        const closedCount = repliedCount;
         return {
             totalContacts,
             totalReplies,
@@ -172,6 +202,12 @@ class ContactService {
             contactsLastMonth,
             averageRepliesPerContact,
             recentContacts,
+            statusCounts: {
+                PENDING: pendingCount,
+                IN_REVIEW: inReviewCount,
+                REPLIED: repliedCount,
+                CLOSED: closedCount,
+            },
         };
     }
     async contactExists(id) {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TemplateService = void 0;
+exports.templateService = exports.TemplateService = void 0;
 const database_1 = require("../../config/database");
 class TemplateService {
     async getAllTemplates(query) {
@@ -222,4 +222,5 @@ class TemplateService {
     }
 }
 exports.TemplateService = TemplateService;
+exports.templateService = new TemplateService();
 //# sourceMappingURL=template.service.js.map

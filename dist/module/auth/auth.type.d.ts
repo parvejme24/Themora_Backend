@@ -1,6 +1,7 @@
 import { z } from "zod";
 export declare const registerUserSchema: z.ZodObject<{
-    fullName: z.ZodString;
+    fullName: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
     email: z.ZodString;
     password: z.ZodString;
     clientToken: z.ZodOptional<z.ZodString>;
@@ -30,9 +31,12 @@ export declare const changePasswordSchema: z.ZodObject<{
     newPassword: z.ZodString;
 }, z.core.$strip>;
 export declare const updateProfileSchema: z.ZodObject<{
-    avatarUrl: z.ZodOptional<z.ZodString>;
+    name: z.ZodOptional<z.ZodString>;
+    fullName: z.ZodOptional<z.ZodString>;
+    avatarUrl: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     designation: z.ZodOptional<z.ZodString>;
     phone: z.ZodOptional<z.ZodString>;
+    address: z.ZodOptional<z.ZodString>;
     country: z.ZodOptional<z.ZodString>;
     city: z.ZodOptional<z.ZodString>;
     stateOrRegion: z.ZodOptional<z.ZodString>;
@@ -86,7 +90,14 @@ export declare const resetPasswordWithOtpSchema: z.ZodObject<{
     otp: z.ZodString;
     newPassword: z.ZodString;
 }, z.core.$strip>;
-export declare const logoutSchema: z.ZodObject<{
-    nextAuthSecret: z.ZodString;
+export declare const logoutSchema: z.ZodOptional<z.ZodObject<{
+    nextAuthSecret: z.ZodOptional<z.ZodString>;
+    token: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>>;
+export declare const changeUserRoleSchema: z.ZodObject<{
+    role: z.ZodEnum<{
+        ADMIN: "ADMIN";
+        USER: "USER";
+    }>;
 }, z.core.$strip>;
 //# sourceMappingURL=auth.type.d.ts.map

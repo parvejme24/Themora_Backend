@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateResetPasswordWithOtp = exports.validatePasswordResetOtp = exports.validateRequestPasswordReset = exports.validateResendOtp = exports.validateVerifyOtp = exports.validateLogout = exports.validateSessionValidation = exports.validateUserId = exports.validateUserQuery = exports.validateUpdateProfile = exports.validateChangePassword = exports.validateGoogleLogin = exports.validateLoginUser = exports.validateRegisterUser = void 0;
+exports.validateResetPasswordWithOtp = exports.validatePasswordResetOtp = exports.validateRequestPasswordReset = exports.validateResendOtp = exports.validateVerifyOtp = exports.validateChangeUserRole = exports.validateLogout = exports.validateSessionValidation = exports.validateUserId = exports.validateUserQuery = exports.validateUpdateProfile = exports.validateChangePassword = exports.validateGoogleLogin = exports.validateLoginUser = exports.validateRegisterUser = void 0;
 const auth_type_1 = require("./auth.type");
 const validateRegisterUser = (req, res, next) => {
     try {
@@ -132,8 +132,10 @@ const validateSessionValidation = (req, res, next) => {
 exports.validateSessionValidation = validateSessionValidation;
 const validateLogout = (req, res, next) => {
     try {
-        const validatedData = auth_type_1.logoutSchema.parse(req.body);
-        req.body = validatedData;
+        if (req.body && Object.keys(req.body).length > 0) {
+            const validatedData = auth_type_1.logoutSchema?.parse(req.body);
+            req.body = validatedData || {};
+        }
         next();
         return;
     }
@@ -146,6 +148,22 @@ const validateLogout = (req, res, next) => {
     }
 };
 exports.validateLogout = validateLogout;
+const validateChangeUserRole = (req, res, next) => {
+    try {
+        const validatedData = auth_type_1.changeUserRoleSchema.parse(req.body);
+        req.body = validatedData;
+        next();
+        return;
+    }
+    catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: "Validation failed",
+            error: error.errors || error.message,
+        });
+    }
+};
+exports.validateChangeUserRole = validateChangeUserRole;
 const validateVerifyOtp = (req, res, next) => {
     try {
         const validatedData = auth_type_1.verifyOtpSchema.parse(req.body);

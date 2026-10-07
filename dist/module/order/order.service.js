@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OrderService = void 0;
+exports.orderService = exports.OrderService = void 0;
 const database_1 = require("../../config/database");
 class OrderService {
     async getAllOrders(query) {
@@ -74,8 +74,9 @@ class OrderService {
         };
     }
     async getOrderById(id) {
-        const order = await database_1.prisma.orderInvoice.findUnique({
-            where: { id },
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        const order = await database_1.prisma.orderInvoice.findFirst({
+            where: isUuid ? { OR: [{ id }, { lemonsqueezyOrderId: id }] } : { lemonsqueezyOrderId: id },
             include: {
                 user: {
                     select: {
@@ -311,4 +312,5 @@ class OrderService {
     }
 }
 exports.OrderService = OrderService;
+exports.orderService = new OrderService();
 //# sourceMappingURL=order.service.js.map

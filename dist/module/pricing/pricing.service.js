@@ -45,11 +45,18 @@ const defaultPlans = [
 ];
 class PricingService {
     async ensureDefaultPlans() {
-        await Promise.all(defaultPlans.map((plan) => database_1.prisma.pricingPlan.upsert({
-            where: { slug: plan.slug },
-            create: plan,
-            update: {},
-        })));
+        try {
+            for (const plan of defaultPlans) {
+                await database_1.prisma.pricingPlan.upsert({
+                    where: { slug: plan.slug },
+                    create: plan,
+                    update: {},
+                });
+            }
+        }
+        catch (error) {
+            console.warn("Could not ensure default pricing plans:", error);
+        }
     }
     async getActivePlans() {
         await this.ensureDefaultPlans();

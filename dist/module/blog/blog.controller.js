@@ -456,7 +456,8 @@ const addBlogReaction = async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user?.id;
-        const { reactionType } = req.body;
+        const rawType = req.body.reactionType || req.body.reaction || req.body.type || "LIKE";
+        const reactionType = String(rawType).toUpperCase();
         if (!userId) {
             return res.status(400).json({
                 success: false,

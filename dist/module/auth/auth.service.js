@@ -20,8 +20,17 @@ class AuthService {
     }
     async registerUser(data) {
         try {
+            const userFullName = (data.fullName || data.name || "").trim();
+            const normalizedEmail = data.email.trim().toLowerCase();
+            if (!userFullName) {
+                return {
+                    success: false,
+                    message: "Full name or name is required",
+                    error: "Name is required",
+                };
+            }
             const existingUser = await database_1.prisma.user.findUnique({
-                where: { email: data.email },
+                where: { email: normalizedEmail },
             });
             if (existingUser) {
                 return {
@@ -39,8 +48,8 @@ class AuthService {
                 : null;
             const user = await database_1.prisma.user.create({
                 data: {
-                    fullName: data.fullName,
-                    email: data.email,
+                    fullName: userFullName,
+                    email: normalizedEmail,
                     password: hashedPassword,
                     nextAuthSecret,
                     nextAuthExpiresAt: sessionExpiration,
@@ -72,11 +81,12 @@ class AuthService {
                     error: "Email delivery failed",
                 };
             }
+            const { password: _password, otpCode: _otpCode, otpPurpose: _otpPurpose, otpExpiresAt: _otpExpiresAt, ...safeUser } = user;
             return {
                 success: true,
                 message: "User registered successfully. Please verify the OTP sent to your email.",
                 data: {
-                    user: user,
+                    user: safeUser,
                     nextAuthSecret: nextAuthSecret || undefined,
                     expiresAt: sessionExpiration || undefined,
                 },
@@ -93,8 +103,9 @@ class AuthService {
     }
     async loginUser(data) {
         try {
+            const normalizedEmail = data.email.trim().toLowerCase();
             const user = await database_1.prisma.user.findUnique({
-                where: { email: data.email },
+                where: { email: normalizedEmail },
                 include: { profile: true },
             });
             if (!user) {
@@ -145,11 +156,12 @@ class AuthService {
                 },
                 include: { profile: true },
             });
+            const { password: _password, otpCode: _otpCode, otpPurpose: _otpPurpose, otpExpiresAt: _otpExpiresAt, ...safeUser } = updatedUser;
             return {
                 success: true,
                 message: "Login successful",
                 data: {
-                    user: updatedUser,
+                    user: safeUser,
                     nextAuthSecret,
                     expiresAt: sessionExpiration,
                 },
@@ -505,32 +517,58 @@ class AuthService {
     }
     async updateProfile(userId, data) {
         try {
+            const { name, fullName, address, ...profileFields } = data;
+            const userFullName = (fullName || name || "").trim();
+            if (userFullName) {
+                await database_1.prisma.user.update({
+                    where: { id: userId },
+                    data: { fullName: userFullName },
+                });
+            }
+            const profileData = { ...profileFields };
+            if (address && !profileData.stateOrRegion) {
+                profileData.stateOrRegion = address;
+            }
+            Object.keys(profileData).forEach((key) => {
+                if (profileData[key] === undefined) {
+                    delete profileData[key];
+                }
+            });
             const existingProfile = await database_1.prisma.userProfile.findUnique({
                 where: { userId },
             });
-            let profile;
-            if (existingProfile) {
-                profile = await database_1.prisma.userProfile.update({
-                    where: { userId },
-                    data,
-                });
-            }
-            else {
-                profile = await database_1.prisma.userProfile.create({
-                    data: {
-                        userId,
-                        ...data,
-                    },
-                });
+            if (Object.keys(profileData).length > 0) {
+                if (existingProfile) {
+                    await database_1.prisma.userProfile.update({
+                        where: { userId },
+                        data: profileData,
+                    });
+                }
+                else {
+                    await database_1.prisma.userProfile.create({
+                        data: {
+                            userId,
+                            ...profileData,
+                        },
+                    });
+                }
             }
             const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
                 include: { profile: true },
             });
+            if (!user) {
+                return {
+                    success: false,
+                    message: "User not found",
+                    error: "User not found",
+                };
+            }
+            const { password: _password, otpCode: _otpCode, otpPurpose: _otpPurpose, otpExpiresAt: _otpExpiresAt, ...safeUser } = user;
             return {
                 success: true,
                 message: "Profile updated successfully",
-                data: { user: user },
+                data: { user: safeUser },
             };
         }
         catch (error) {
@@ -555,10 +593,11 @@ class AuthService {
                     error: "User not found",
                 };
             }
+            const { password: _password, otpCode: _otpCode, otpPurpose: _otpPurpose, otpExpiresAt: _otpExpiresAt, ...safeUser } = user;
             return {
                 success: true,
                 message: "User fetched successfully",
-                data: { user: user },
+                data: { user: safeUser },
             };
         }
         catch (error) {
@@ -696,10 +735,11 @@ class AuthService {
                 data: updateData,
                 include: { profile: true },
             });
+            const { password: _password, otpCode: _otpCode, otpPurpose: _otpPurpose, otpExpiresAt: _otpExpiresAt, ...safeUser } = updatedUser;
             return {
                 success: true,
                 message: "User updated successfully",
-                data: { user: updatedUser },
+                data: { user: safeUser },
             };
         }
         catch (error) {

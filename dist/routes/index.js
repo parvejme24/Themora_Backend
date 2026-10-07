@@ -15,8 +15,8 @@ const template_route_1 = __importDefault(require("../module/template/template.ro
 const order_route_1 = __importDefault(require("../module/order/order.route"));
 const pricing_route_1 = __importDefault(require("../module/pricing/pricing.route"));
 const payment_route_1 = __importDefault(require("../module/payment/payment.route"));
-const license_route_1 = __importDefault(require("../module/license/license.route"));
 const webhook_route_1 = __importDefault(require("../module/webhook/webhook.route"));
+const dashboard_route_1 = __importDefault(require("../module/dashboard/dashboard.route"));
 const router = (0, express_1.Router)();
 const apiV1Router = (0, express_1.Router)();
 apiV1Router.use(auth_route_1.default);
@@ -30,8 +30,8 @@ apiV1Router.use(template_route_1.default);
 apiV1Router.use(order_route_1.default);
 apiV1Router.use(pricing_route_1.default);
 apiV1Router.use(payment_route_1.default);
-apiV1Router.use(license_route_1.default);
 apiV1Router.use(webhook_route_1.default);
+apiV1Router.use(dashboard_route_1.default);
 router.use("/api/v1", apiV1Router);
 exports.default = router;
 //# sourceMappingURL=index.js.map

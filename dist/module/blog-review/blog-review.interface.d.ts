@@ -36,6 +36,7 @@ export interface ICreateBlogReview {
 export interface ICreateBlogReviewReply {
     reviewId: string;
     userId?: string;
+    adminId?: string;
     replyText: string;
     fullName: string;
     email: string;

@@ -1,48 +1,16 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getTemplateCategoryStats = exports.deleteTemplateCategory = exports.updateTemplateCategory = exports.getTemplateCategoryById = exports.getAllTemplateCategories = exports.createTemplateCategory = void 0;
 const template_category_service_1 = require("./template-category.service");
+const cloudinary_upload_1 = require("../../middleware/cloudinary-upload");
 const templateCategoryService = new template_category_service_1.TemplateCategoryService();
 const createTemplateCategory = async (req, res) => {
     try {
-        const data = req.validatedData;
-        if (req.file) {
+        const data = req.validatedData || req.body;
+        const file = (0, cloudinary_upload_1.getUploadedFile)(req);
+        if (file) {
             try {
-                const { uploadBufferToCloudinary } = await Promise.resolve().then(() => __importStar(require("../../middleware/cloudinary-upload")));
-                const uploadResult = await uploadBufferToCloudinary(req.file, "themora/template-categories");
+                const uploadResult = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(file, "themora/template-categories");
                 data.image = uploadResult.url;
             }
             catch (uploadError) {
@@ -122,11 +90,11 @@ exports.getTemplateCategoryById = getTemplateCategoryById;
 const updateTemplateCategory = async (req, res) => {
     try {
         const { id } = req.params;
-        const data = req.validatedData;
-        if (req.file) {
+        const data = req.validatedData || req.body;
+        const file = (0, cloudinary_upload_1.getUploadedFile)(req);
+        if (file) {
             try {
-                const { uploadBufferToCloudinary } = await Promise.resolve().then(() => __importStar(require("../../middleware/cloudinary-upload")));
-                const uploadResult = await uploadBufferToCloudinary(req.file, "themora/template-categories");
+                const uploadResult = await (0, cloudinary_upload_1.uploadBufferToCloudinary)(file, "themora/template-categories");
                 data.image = uploadResult.url;
             }
             catch (uploadError) {

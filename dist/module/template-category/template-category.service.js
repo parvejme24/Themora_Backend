@@ -41,10 +41,11 @@ class TemplateCategoryService {
         try {
             const skip = (page - 1) * limit;
             const where = {};
-            if (search) {
+            if (search && search.trim()) {
+                const searchTerm = search.trim();
                 where.OR = [
-                    { title: { contains: search, mode: "insensitive" } },
-                    { slug: { contains: search, mode: "insensitive" } },
+                    { title: { contains: searchTerm, mode: "insensitive" } },
+                    { slug: { contains: searchTerm, mode: "insensitive" } },
                 ];
             }
             const [categories, total] = await Promise.all([

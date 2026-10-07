@@ -1,16 +1,17 @@
 import { z } from "zod";
 export declare const createOrderSchema: z.ZodObject<{
-    templateId: z.ZodString;
-    lemonsqueezyOrderId: z.ZodString;
+    templateId: z.ZodOptional<z.ZodString>;
+    pricingPlanId: z.ZodOptional<z.ZodString>;
+    lemonsqueezyOrderId: z.ZodOptional<z.ZodString>;
     lemonsqueezyInvoiceId: z.ZodOptional<z.ZodString>;
-    totalAmount: z.ZodNumber;
+    totalAmount: z.ZodOptional<z.ZodNumber>;
     currency: z.ZodDefault<z.ZodString>;
-    licenseType: z.ZodEnum<{
+    licenseType: z.ZodDefault<z.ZodEnum<{
         SINGLE: "SINGLE";
         EXTENDED: "EXTENDED";
-    }>;
+    }>>;
     paymentMethod: z.ZodOptional<z.ZodString>;
-    customerEmail: z.ZodString;
+    customerEmail: z.ZodOptional<z.ZodString>;
     customerName: z.ZodOptional<z.ZodString>;
     billingAddress: z.ZodOptional<z.ZodAny>;
     downloadLinks: z.ZodOptional<z.ZodArray<z.ZodString>>;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NewsletterService = void 0;
+exports.newsletterService = exports.NewsletterService = void 0;
 const database_1 = require("../../config/database");
 class NewsletterService {
     async subscribeNewsletter(email, userId) {
@@ -200,4 +200,5 @@ class NewsletterService {
     }
 }
 exports.NewsletterService = NewsletterService;
+exports.newsletterService = new NewsletterService();
 //# sourceMappingURL=newsletter.service.js.map

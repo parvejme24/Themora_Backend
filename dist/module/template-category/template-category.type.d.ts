@@ -2,12 +2,12 @@ import { z } from "zod";
 export declare const createTemplateCategorySchema: z.ZodObject<{
     title: z.ZodString;
     slug: z.ZodOptional<z.ZodString>;
-    image: z.ZodOptional<z.ZodString>;
+    image: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, z.core.$strip>;
 export declare const updateTemplateCategorySchema: z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
     slug: z.ZodOptional<z.ZodString>;
-    image: z.ZodOptional<z.ZodString>;
+    image: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, z.core.$strip>;
 export declare const templateCategoryIdSchema: z.ZodObject<{
     id: z.ZodString;

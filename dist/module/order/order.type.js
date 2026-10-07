@@ -3,14 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.orderQuerySchema = exports.orderIdSchema = exports.updateOrderStatusSchema = exports.createOrderSchema = void 0;
 const zod_1 = require("zod");
 exports.createOrderSchema = zod_1.z.object({
-    templateId: zod_1.z.string().uuid("Invalid template ID"),
-    lemonsqueezyOrderId: zod_1.z.string().min(1, "Lemon Squeezy order ID is required"),
+    templateId: zod_1.z.string().uuid("Invalid template ID").optional(),
+    pricingPlanId: zod_1.z.string().uuid("Invalid pricing plan ID").optional(),
+    lemonsqueezyOrderId: zod_1.z.string().optional(),
     lemonsqueezyInvoiceId: zod_1.z.string().optional(),
-    totalAmount: zod_1.z.number().positive("Total amount must be positive"),
+    totalAmount: zod_1.z.number().positive("Total amount must be positive").optional(),
     currency: zod_1.z.string().default("USD"),
-    licenseType: zod_1.z.enum(["SINGLE", "EXTENDED"]),
+    licenseType: zod_1.z.enum(["SINGLE", "EXTENDED"]).default("SINGLE"),
     paymentMethod: zod_1.z.string().optional(),
-    customerEmail: zod_1.z.string().email("Invalid email address"),
+    customerEmail: zod_1.z.string().email("Invalid email address").optional(),
     customerName: zod_1.z.string().optional(),
     billingAddress: zod_1.z.any().optional(),
     downloadLinks: zod_1.z.array(zod_1.z.string()).optional(),
@@ -20,7 +21,7 @@ exports.updateOrderStatusSchema = zod_1.z.object({
     status: zod_1.z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED", "REFUNDED"]),
 });
 exports.orderIdSchema = zod_1.z.object({
-    id: zod_1.z.string().uuid("Invalid order ID"),
+    id: zod_1.z.string().min(1, "Order ID is required"),
 });
 exports.orderQuerySchema = zod_1.z.object({
     page: zod_1.z.string().transform(Number).pipe(zod_1.z.number().int().positive()).default(1),

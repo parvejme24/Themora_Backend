@@ -8,6 +8,7 @@ export declare const validateUserQuery: (req: Request, res: Response, next: Next
 export declare const validateUserId: (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
 export declare const validateSessionValidation: (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
 export declare const validateLogout: (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
+export declare const validateChangeUserRole: (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
 export declare const validateVerifyOtp: (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
 export declare const validateResendOtp: (req: Request, res: Response, next: NextFunction) => Response<any, Record<string, any>> | undefined;
 export declare const validateRequestPasswordReset: (req: Request, res: Response, next: NextFunction) => void | Response<any, Record<string, any>>;

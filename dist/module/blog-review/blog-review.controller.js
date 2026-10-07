@@ -6,20 +6,24 @@ const createBlogReview = async (req, res) => {
     try {
         const { blogId } = req.params;
         const user = req.user;
+        const body = req.body;
         const reviewData = {
-            ...req.body,
+            ...body,
+            commentText: body.commentText || body.comment,
             blogId,
-            userId: user.id,
-            fullName: user.fullName,
-            email: user.email,
+            userId: user?.id || body.userId,
+            fullName: user?.fullName || body.fullName || body.name || "Reader",
+            email: user?.email || body.email,
         };
-        const hasReviewed = await blog_review_service_1.blogReviewService.hasUserReviewed(blogId, user.id);
-        if (hasReviewed) {
-            return res.status(400).json({
-                success: false,
-                message: "You have already reviewed this blog",
-                error: "Duplicate review not allowed"
-            });
+        if (user?.id) {
+            const hasReviewed = await blog_review_service_1.blogReviewService.hasUserReviewed(blogId, user.id);
+            if (hasReviewed) {
+                return res.status(400).json({
+                    success: false,
+                    message: "You have already reviewed this blog",
+                    error: "Duplicate review not allowed",
+                });
+            }
         }
         const review = await blog_review_service_1.blogReviewService.createBlogReview(reviewData);
         return res.status(201).json({
@@ -41,15 +45,23 @@ exports.createBlogReview = createBlogReview;
 const createBlogReviewReply = async (req, res) => {
     try {
         const { reviewId } = req.params;
-        const adminId = req.user?.id;
-        if (!adminId) {
+        const admin = req.user;
+        if (!admin?.id) {
             return res.status(401).json({
                 success: false,
                 message: "Authentication required",
                 error: "Admin user not found in context",
             });
         }
-        const replyData = { ...req.body, reviewId, adminId };
+        const body = req.body;
+        const replyData = {
+            ...body,
+            replyText: body.replyText || body.reply || body.comment,
+            reviewId,
+            adminId: admin.id,
+            fullName: admin.fullName || body.fullName || "Admin",
+            email: admin.email || body.email,
+        };
         const reply = await blog_review_service_1.blogReviewService.createBlogReviewReply(replyData);
         return res.status(201).json({
             success: true,
