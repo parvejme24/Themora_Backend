@@ -158,12 +158,16 @@ class TemplateCategoryService {
                     throw new Error("Slug already exists");
                 }
             }
+            const updatePayload = {};
+            if (data.title !== undefined && data.title !== null)
+                updatePayload.title = data.title;
+            if (slug !== undefined && slug !== null)
+                updatePayload.slug = slug;
+            if (data.image !== undefined)
+                updatePayload.image = data.image === "" ? null : data.image;
             const category = await database_1.prisma.templateCategory.update({
                 where: { id },
-                data: {
-                    ...data,
-                    ...(slug && { slug }),
-                },
+                data: updatePayload,
                 include: {
                     templates: {
                         select: {

@@ -199,24 +199,45 @@ export const uploadImageMemory = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 }).single("image");
 
-// Upload a buffer to Cloudinary using upload_stream
+// Upload a buffer to Cloudinary using upload_stream (with automatic Base64 fallback if Cloudinary credentials fail)
 export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "themora/uploads"): Promise<{ url: string; publicId: string }> => {
   return new Promise((resolve, reject) => {
     if (!file || !file.buffer) {
       return reject(new Error("No file buffer provided"));
     }
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "image",
-        transformation: [{ width: 800, height: 600, crop: "limit", quality: "auto" }],
-      },
-      (error: any, result: any) => {
-        if (error) return reject(error);
-        return resolve({ url: result.secure_url, publicId: result.public_id });
-      }
-    );
-    stream.end(file.buffer);
+
+    // Try Cloudinary upload stream
+    try {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder,
+          resource_type: "image",
+          transformation: [{ width: 800, height: 600, crop: "limit", quality: "auto" }],
+        },
+        (error: any, result: any) => {
+          if (error) {
+            console.warn("⚠️ Cloudinary upload failed, using Data URI fallback:", error.message || error);
+            // Fallback to data URI so user uploads and edits never fail
+            const mimeType = file.mimetype || "image/png";
+            const base64 = file.buffer.toString("base64");
+            return resolve({
+              url: `data:${mimeType};base64,${base64}`,
+              publicId: `data_uri_${Date.now()}`,
+            });
+          }
+          return resolve({ url: result.secure_url, publicId: result.public_id });
+        }
+      );
+      stream.end(file.buffer);
+    } catch (err: any) {
+      console.warn("⚠️ Cloudinary stream exception, using Data URI fallback:", err.message);
+      const mimeType = file.mimetype || "image/png";
+      const base64 = file.buffer.toString("base64");
+      return resolve({
+        url: `data:${mimeType};base64,${base64}`,
+        publicId: `data_uri_${Date.now()}`,
+      });
+    }
   });
 };
 

@@ -168,16 +168,34 @@ const uploadBufferToCloudinary = (file, folder = "themora/uploads") => {
         if (!file || !file.buffer) {
             return reject(new Error("No file buffer provided"));
         }
-        const stream = cloudinary_1.v2.uploader.upload_stream({
-            folder,
-            resource_type: "image",
-            transformation: [{ width: 800, height: 600, crop: "limit", quality: "auto" }],
-        }, (error, result) => {
-            if (error)
-                return reject(error);
-            return resolve({ url: result.secure_url, publicId: result.public_id });
-        });
-        stream.end(file.buffer);
+        try {
+            const stream = cloudinary_1.v2.uploader.upload_stream({
+                folder,
+                resource_type: "image",
+                transformation: [{ width: 800, height: 600, crop: "limit", quality: "auto" }],
+            }, (error, result) => {
+                if (error) {
+                    console.warn("⚠️ Cloudinary upload failed, using Data URI fallback:", error.message || error);
+                    const mimeType = file.mimetype || "image/png";
+                    const base64 = file.buffer.toString("base64");
+                    return resolve({
+                        url: `data:${mimeType};base64,${base64}`,
+                        publicId: `data_uri_${Date.now()}`,
+                    });
+                }
+                return resolve({ url: result.secure_url, publicId: result.public_id });
+            });
+            stream.end(file.buffer);
+        }
+        catch (err) {
+            console.warn("⚠️ Cloudinary stream exception, using Data URI fallback:", err.message);
+            const mimeType = file.mimetype || "image/png";
+            const base64 = file.buffer.toString("base64");
+            return resolve({
+                url: `data:${mimeType};base64,${base64}`,
+                publicId: `data_uri_${Date.now()}`,
+            });
+        }
     });
 };
 exports.uploadBufferToCloudinary = uploadBufferToCloudinary;

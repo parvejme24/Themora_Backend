@@ -193,12 +193,14 @@ export class TemplateCategoryService implements ITemplateCategoryService {
         }
       }
 
+      const updatePayload: Record<string, any> = {};
+      if (data.title !== undefined && data.title !== null) updatePayload.title = data.title;
+      if (slug !== undefined && slug !== null) updatePayload.slug = slug;
+      if (data.image !== undefined) updatePayload.image = data.image === "" ? null : data.image;
+
       const category = await prisma.templateCategory.update({
         where: { id },
-        data: {
-          ...data,
-          ...(slug && { slug }),
-        },
+        data: updatePayload,
         include: {
           templates: {
             select: {
