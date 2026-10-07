@@ -60,7 +60,7 @@ export const getContactById = async (req: Request, res: Response) => {
   }
 };
 
-// Get contacts by user email
+// Get contacts by user email (with pagination support)
 export const getContactsByUserEmail = async (req: Request, res: Response) => {
   try {
     const { userEmail } = req.params;
@@ -69,12 +69,16 @@ export const getContactsByUserEmail = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: "You can only view contact requests for your own account" });
     }
     
-    const contacts = await contactService.getContactsByUserEmail(userEmail);
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    
+    const result = await contactService.getContactsByUserEmail(userEmail, page, limit);
     
     return res.status(200).json({
       success: true,
       message: "User contacts fetched successfully",
-      data: contacts,
+      data: result.contacts,
+      pagination: result.pagination,
     });
   } catch (error) {
     console.error("Error fetching user contacts:", error);
@@ -89,9 +93,15 @@ export const getContactsByUserEmail = async (req: Request, res: Response) => {
 // Create new contact (Public route)
 export const addNewContact = async (req: Request, res: Response) => {
   try {
+    const rawData = (req as any).validatedBody || req.body;
     const contactData = {
-      ...((req as any).validatedBody || req.body),
-      userId: (req as any).user?.id,
+      fullName: rawData.fullName || rawData.name || "Customer",
+      email: rawData.email,
+      projectDetails: rawData.projectDetails || rawData.message || "No details provided",
+      budget: rawData.budget || "Flexible",
+      companyName: rawData.companyName || "N/A",
+      serviceRequired: rawData.serviceRequired || rawData.service || "General Inquiry",
+      userId: (req as any).user?.id || rawData.userId,
     };
     
     const contact = await contactService.createContact(contactData);
