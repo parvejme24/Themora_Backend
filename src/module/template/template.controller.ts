@@ -7,9 +7,9 @@ const templateService = new TemplateService();
 const orderService = new OrderService();
 
 const userHasTemplateAccess = async (userId: string, templateId: string) => {
-  const [license, planEntitlement] = await Promise.all([
-    prisma.license.findFirst({
-      where: { userId, templateId, isActive: true, order: { status: "COMPLETED" } },
+  const [completedOrder, planEntitlement] = await Promise.all([
+    prisma.orderInvoice.findFirst({
+      where: { userId, templateId, status: "COMPLETED" },
       select: { id: true },
     }),
     prisma.planEntitlement.findFirst({
@@ -17,7 +17,7 @@ const userHasTemplateAccess = async (userId: string, templateId: string) => {
       select: { id: true },
     }),
   ]);
-  return Boolean(license || planEntitlement);
+  return Boolean(completedOrder || planEntitlement);
 };
 
 // Get all templates

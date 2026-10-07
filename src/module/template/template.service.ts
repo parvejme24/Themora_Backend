@@ -257,5 +257,6 @@ export class TemplateService implements ITemplateService {
       categoryStats: categoryStatsFormatted,
     };
   }
-
 }
+
+export const templateService = new TemplateService();
