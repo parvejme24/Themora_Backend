@@ -62,10 +62,11 @@ export class TemplateCategoryService implements ITemplateCategoryService {
       
       const where: any = {};
       
-      if (search) {
+      if (search && search.trim()) {
+        const searchTerm = search.trim();
         where.OR = [
-          { title: { contains: search, mode: "insensitive" as any } },
-          { slug: { contains: search, mode: "insensitive" as any } },
+          { title: { contains: searchTerm, mode: "insensitive" as any } },
+          { slug: { contains: searchTerm, mode: "insensitive" as any } },
         ];
       }
 

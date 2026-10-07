@@ -3,15 +3,15 @@ import { z } from "zod";
 // Template category creation schema
 export const createTemplateCategorySchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must not exceed 100 characters"),
-  slug: z.string().min(1, "Slug is required").max(100, "Slug must not exceed 100 characters").optional(),
-  image: z.string().url("Invalid image URL").optional(),
+  slug: z.string().min(1, "Slug must not be empty").max(100, "Slug must not exceed 100 characters").optional(),
+  image: z.string().url("Invalid image URL").optional().or(z.literal("")),
 });
 
 // Template category update schema
 export const updateTemplateCategorySchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must not exceed 100 characters").optional(),
-  slug: z.string().min(1, "Slug is required").max(100, "Slug must not exceed 100 characters").optional(),
-  image: z.string().url("Invalid image URL").optional(),
+  slug: z.string().min(1, "Slug must not be empty").max(100, "Slug must not exceed 100 characters").optional(),
+  image: z.string().url("Invalid image URL").optional().or(z.literal("")),
 });
 
 // Template category ID parameter schema

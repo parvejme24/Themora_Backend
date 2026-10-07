@@ -1,22 +1,20 @@
 import { Request, Response } from "express";
 import { TemplateCategoryService } from "./template-category.service";
+import { uploadBufferToCloudinary, getUploadedFile } from "../../middleware/cloudinary-upload";
 
 const templateCategoryService = new TemplateCategoryService();
 
 // Create template category
 export const createTemplateCategory = async (req: Request, res: Response) => {
   try {
-    const data = (req as any).validatedData;
+    const data = (req as any).validatedData || req.body;
 
-    // Handle image upload from multer (now using memory storage)
-    if (req.file) {
+    // Handle image upload from multer
+    const file = getUploadedFile(req);
+    if (file) {
       try {
-        // Upload to Cloudinary manually
-        const { uploadBufferToCloudinary } = await import(
-          "../../middleware/cloudinary-upload"
-        );
         const uploadResult = await uploadBufferToCloudinary(
-          req.file,
+          file,
           "themora/template-categories"
         );
         data.image = uploadResult.url;
@@ -110,17 +108,14 @@ export const getTemplateCategoryById = async (req: Request, res: Response) => {
 export const updateTemplateCategory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const data = (req as any).validatedData;
+    const data = (req as any).validatedData || req.body;
 
-    // Handle image upload from multer (now using memory storage)
-    if (req.file) {
+    // Handle image upload from multer
+    const file = getUploadedFile(req);
+    if (file) {
       try {
-        // Upload to Cloudinary manually
-        const { uploadBufferToCloudinary } = await import(
-          "../../middleware/cloudinary-upload"
-        );
         const uploadResult = await uploadBufferToCloudinary(
-          req.file,
+          file,
           "themora/template-categories"
         );
         data.image = uploadResult.url;
