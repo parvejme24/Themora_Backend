@@ -52,7 +52,7 @@ export const getOrderById = async (req: Request, res: Response) => {
       });
     }
 
-    if (user?.role !== "ADMIN" && order.userId !== user?.id) {
+    if (user && user.role !== "ADMIN" && order.userId && order.userId !== user.id && order.customerEmail?.toLowerCase() !== user.email?.toLowerCase()) {
       return res.status(404).json({ success: false, message: "Order not found", data: null });
     }
 
@@ -74,14 +74,60 @@ export const getOrderById = async (req: Request, res: Response) => {
 // Create order
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const data = (req as any).validatedData;
+    const user = (req as any).user;
+    const data = (req as any).validatedData || req.body;
+
+    if (user) {
+      data.userId = data.userId || user.id;
+      data.customerEmail = data.customerEmail || user.email;
+      data.customerName = data.customerName || user.fullName;
+    }
+
+    if (!data.lemonsqueezyOrderId) {
+      data.lemonsqueezyOrderId = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    }
+
+    if (data.templateId && (!data.totalAmount || data.totalAmount <= 0)) {
+      const { prisma } = await import("../../config/database");
+      const template = await prisma.template.findUnique({ where: { id: data.templateId } });
+      if (template) {
+        data.totalAmount = data.licenseType === "EXTENDED" ? template.price * 2 : template.price;
+        if (!data.downloadLinks || data.downloadLinks.length === 0) {
+          data.downloadLinks = template.sourceFiles || [];
+        }
+      }
+    }
+
+    if (!data.totalAmount) {
+      data.totalAmount = 49.0;
+    }
 
     const order = await orderService.createOrder(data);
+
+    // Issue license key if order is created
+    if (order) {
+      const { prisma } = await import("../../config/database");
+      const licenseKey = `THM-${(order.licenseType || "STD").substring(0, 3)}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      await prisma.license.create({
+        data: {
+          orderId: order.id,
+          templateId: order.templateId || (data.templateId || null),
+          userId: order.userId || (user ? user.id : null),
+          licenseType: order.licenseType || "SINGLE",
+          licenseKey,
+          lemonsqueezyOrderId: order.lemonsqueezyOrderId,
+          isActive: true,
+          maxUsage: order.licenseType === "EXTENDED" ? 10 : 1,
+        },
+      });
+    }
+
+    const freshOrder = await orderService.getOrderById(order.id);
 
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
-      data: order,
+      data: freshOrder || order,
     });
   } catch (error: any) {
     console.error("Error creating order:", error);

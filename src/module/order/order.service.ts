@@ -84,8 +84,9 @@ export class OrderService {
   }
 
   async getOrderById(id: string): Promise<Order | null> {
-    const order = await prisma.orderInvoice.findUnique({
-      where: { id },
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const order = await prisma.orderInvoice.findFirst({
+      where: isUuid ? { OR: [{ id }, { lemonsqueezyOrderId: id }] } : { lemonsqueezyOrderId: id },
       include: {
         user: {
           select: {
@@ -343,4 +344,6 @@ export class OrderService {
     return result;
   }
 }
+
+export const orderService = new OrderService();
 
