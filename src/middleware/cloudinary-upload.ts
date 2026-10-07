@@ -137,12 +137,15 @@ const templateFileFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-// Category image upload middleware - Use memory storage and handle upload manually
+// Category image upload middleware - Use memory storage and handle upload manually (supports field 'image' or 'file')
 export const uploadCategoryImageCloudinary = multer({
   storage: multer.memoryStorage(), // Always use memory storage
   fileFilter: imageFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-}).single("image");
+}).fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'file', maxCount: 1 }
+]);
 
 // Blog image upload middleware - Use memory storage and handle upload manually
 export const uploadBlogImageCloudinary = multer({
@@ -151,12 +154,30 @@ export const uploadBlogImageCloudinary = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for blog images
 }).single("image");
 
-// Avatar image upload middleware - Use memory storage and handle upload manually
+// Avatar image upload middleware - Use memory storage and handle upload manually (supports field 'image', 'avatar', or 'file')
 export const uploadAvatarImageCloudinary = multer({
   storage: multer.memoryStorage(), // Always use memory storage
   fileFilter: imageFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB for avatars
-}).single("image");
+}).fields([
+  { name: "image", maxCount: 1 },
+  { name: "avatar", maxCount: 1 },
+  { name: "file", maxCount: 1 },
+]);
+
+// Helper to extract uploaded file from multer single or fields
+export const getUploadedFile = (req: any): Express.Multer.File | undefined => {
+  if (req.file) return req.file;
+  if (req.files) {
+    if (Array.isArray(req.files)) {
+      return req.files[0];
+    }
+    if (req.files.image && req.files.image[0]) return req.files.image[0];
+    if (req.files.avatar && req.files.avatar[0]) return req.files.avatar[0];
+    if (req.files.file && req.files.file[0]) return req.files.file[0];
+  }
+  return undefined;
+};
 
 // Template image upload middleware - Use memory storage and handle upload manually
 export const uploadTemplateImageCloudinary = multer({

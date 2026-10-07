@@ -13,7 +13,8 @@ import {
   resendOtpSchema,
   requestPasswordResetSchema,
   verifyPasswordResetOtpSchema,
-  resetPasswordWithOtpSchema
+  resetPasswordWithOtpSchema,
+  changeUserRoleSchema,
 } from "./auth.type";
 
 // Validate user registration
@@ -149,7 +150,25 @@ export const validateSessionValidation = (req: Request, res: Response, next: Nex
 // Validate logout
 export const validateLogout = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const validatedData = logoutSchema.parse(req.body);
+    if (req.body && Object.keys(req.body).length > 0) {
+      const validatedData = logoutSchema?.parse(req.body);
+      req.body = validatedData || {};
+    }
+    next();
+    return;
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      error: error.errors || error.message,
+    });
+  }
+};
+
+// Validate change user role
+export const validateChangeUserRole = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = changeUserRoleSchema.parse(req.body);
     req.body = validatedData;
     next();
     return;
