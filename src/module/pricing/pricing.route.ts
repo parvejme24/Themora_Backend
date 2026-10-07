@@ -14,6 +14,8 @@ import { validateCreatePricingPlan, validatePricingPlanId, validateUpdatePricing
 const router = Router();
 
 router.get("/pricing", cacheResponse(60), getPricingPlans);
+router.get("/pricing/plans", cacheResponse(60), getPricingPlans);
+router.get("/pricing-plans", cacheResponse(60), getPricingPlans);
 router.get("/admin/pricing", authenticateAdminAndCheckStatus, getAllPricingPlans);
 router.post("/pricing", authenticateAdminAndCheckStatus, validateCreatePricingPlan, createPricingPlan);
 router.get("/pricing/:id", validatePricingPlanId, getPricingPlan);
