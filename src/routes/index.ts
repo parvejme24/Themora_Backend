@@ -10,8 +10,8 @@ import templateRoutes from "../module/template/template.route";
 import orderRoutes from "../module/order/order.route";
 import pricingRoutes from "../module/pricing/pricing.route";
 import paymentRoutes from "../module/payment/payment.route";
-import licenseRoutes from "../module/license/license.route";
 import webhookRoutes from "../module/webhook/webhook.route";
+import dashboardRoutes from "../module/dashboard/dashboard.route";
 
 const router = Router();
 const apiV1Router = Router();
@@ -47,11 +47,11 @@ apiV1Router.use(orderRoutes);
 apiV1Router.use(pricingRoutes);
 apiV1Router.use(paymentRoutes);
 
-// License routes
-apiV1Router.use(licenseRoutes);
-
 // Webhook routes
 apiV1Router.use(webhookRoutes);
+
+// Dashboard overview & stats routes
+apiV1Router.use(dashboardRoutes);
 
 router.use("/api/v1", apiV1Router);
 
