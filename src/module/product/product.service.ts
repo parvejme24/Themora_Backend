@@ -101,13 +101,21 @@ const tagsConnect = (names: string[]) =>
 export const findProductByIdOrSlug = (idOrSlug: string) =>
   UUID_PATTERN.test(idOrSlug) ? { id: idOrSlug } : { slug: idOrSlug };
 
-// A user owns a product when they have a completed order for it or a licence.
+// A user owns a product when they have an active licence for it or a
+// completed order containing it (legacy single-product or cart item).
 export const userOwnsProduct = async (userId: string, productId: string) => {
-  const [order, license] = await Promise.all([
-    prisma.orderInvoice.findFirst({ where: { userId, templateId: productId, status: "COMPLETED" }, select: { id: true } }),
+  const [license, order] = await Promise.all([
     prisma.license.findFirst({ where: { userId, templateId: productId, isActive: true }, select: { id: true } }),
+    prisma.orderInvoice.findFirst({
+      where: {
+        userId,
+        status: "COMPLETED",
+        OR: [{ templateId: productId }, { items: { some: { productId } } }],
+      },
+      select: { id: true },
+    }),
   ]);
-  return Boolean(order || license);
+  return Boolean(license || order);
 };
 
 export class ProductService {

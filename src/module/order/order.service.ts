@@ -1,5 +1,5 @@
 import { prisma } from "../../config/database";
-import { CreateOrderInput, UpdateOrderStatusInput, Order, PaginatedOrders, OrderStats, OrderQuery } from "./order.type";
+import { UpdateOrderStatusInput, Order, PaginatedOrders, OrderStats, OrderQuery } from "./order.type";
 
 export class OrderService {
   async getAllOrders(query: OrderQuery): Promise<PaginatedOrders> {
@@ -71,7 +71,7 @@ export class OrderService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      orders: orders as Order[],
+      orders: orders as unknown as Order[],
       pagination: {
         page,
         limit,
@@ -86,7 +86,7 @@ export class OrderService {
   async getOrderById(id: string): Promise<Order | null> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     const order = await prisma.orderInvoice.findFirst({
-      where: isUuid ? { OR: [{ id }, { lemonsqueezyOrderId: id }] } : { lemonsqueezyOrderId: id },
+      where: isUuid ? { id } : { orderNumber: id },
       include: {
         user: {
           select: {
@@ -122,52 +122,7 @@ export class OrderService {
       },
     });
 
-    return order as Order | null;
-  }
-
-  async createOrder(data: CreateOrderInput): Promise<Order> {
-    const order = await prisma.orderInvoice.create({
-      data: {
-        ...data,
-        downloadLinks: data.downloadLinks || [],
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-        template: {
-          select: {
-            id: true,
-            title: true,
-            price: true,
-            imageUrl: true,
-            shortDescription: true,
-          },
-        },
-        pricingPlan: {
-          select: { id: true, title: true, price: true, websiteLimit: true },
-        },
-        planEntitlement: {
-          select: { isActive: true, websitesAllowed: true, supportExpiresAt: true },
-        },
-        licenses: {
-          select: {
-            id: true,
-            licenseKey: true,
-            licenseType: true,
-            isActive: true,
-            expiresAt: true,
-          },
-        },
-      },
-    });
-
-    return order as Order;
+    return order as unknown as Order | null;
   }
 
   async updateOrderStatus(id: string, data: UpdateOrderStatusInput): Promise<Order | null> {
@@ -209,7 +164,7 @@ export class OrderService {
       },
     });
 
-    return order as Order;
+    return order as unknown as Order;
   }
 
   async getOrderStats(): Promise<OrderStats> {

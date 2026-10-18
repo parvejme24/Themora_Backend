@@ -10,7 +10,6 @@ import templateRoutes from "../module/template/template.route";
 import orderRoutes from "../module/order/order.route";
 import pricingRoutes from "../module/pricing/pricing.route";
 import paymentRoutes from "../module/payment/payment.route";
-import webhookRoutes from "../module/webhook/webhook.route";
 import dashboardRoutes from "../module/dashboard/dashboard.route";
 import productRoutes from "../module/product/product.route";
 import productReviewRoutes from "../module/product-review/product-review.route";
@@ -54,9 +53,6 @@ apiV1Router.use(orderRoutes);
 // Pricing and payment routes
 apiV1Router.use(pricingRoutes);
 apiV1Router.use(paymentRoutes);
-
-// Webhook routes
-apiV1Router.use(webhookRoutes);
 
 // Dashboard overview & stats routes
 apiV1Router.use(dashboardRoutes);

@@ -4,8 +4,6 @@ import { z } from "zod";
 export const createOrderSchema = z.object({
   templateId: z.string().uuid("Invalid template ID").optional(),
   pricingPlanId: z.string().uuid("Invalid pricing plan ID").optional(),
-  lemonsqueezyOrderId: z.string().optional(),
-  lemonsqueezyInvoiceId: z.string().optional(),
   totalAmount: z.number().positive("Total amount must be positive").optional(),
   currency: z.string().default("USD"),
   licenseType: z.enum(["SINGLE", "EXTENDED"]).default("SINGLE"),
@@ -18,7 +16,7 @@ export const createOrderSchema = z.object({
 });
 
 export const updateOrderStatusSchema = z.object({
-  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED", "REFUNDED"]),
+  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "REFUNDED"]),
 });
 
 export const orderIdSchema = z.object({
@@ -28,7 +26,7 @@ export const orderIdSchema = z.object({
 export const orderQuerySchema = z.object({
   page: z.string().transform(Number).pipe(z.number().int().positive()).default(1),
   limit: z.string().transform(Number).pipe(z.number().int().positive().max(100)).default(10),
-  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED", "REFUNDED"]).optional(),
+  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "REFUNDED"]).optional(),
   userId: z.string().uuid().optional(),
   templateId: z.string().uuid().optional(),
   sortBy: z.enum(["createdAt", "totalAmount", "status"]).default("createdAt"),
@@ -40,9 +38,8 @@ export interface Order {
   id: string;
   userId?: string | null;
   templateId: string;
-  lemonsqueezyOrderId: string;
-  lemonsqueezyInvoiceId?: string | null;
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED" | "REFUNDED";
+  orderNumber: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "REFUNDED";
   totalAmount: number;
   currency: string;
   licenseType: "SINGLE" | "EXTENDED";
@@ -77,8 +74,7 @@ export interface Order {
 
 export interface CreateOrderInput {
   templateId: string;
-  lemonsqueezyOrderId: string;
-  lemonsqueezyInvoiceId?: string;
+  orderNumber?: string;
   totalAmount: number;
   currency?: string;
   licenseType: "SINGLE" | "EXTENDED";
@@ -91,13 +87,13 @@ export interface CreateOrderInput {
 }
 
 export interface UpdateOrderStatusInput {
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED" | "REFUNDED";
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "REFUNDED";
 }
 
 export interface OrderQuery {
   page: number;
   limit: number;
-  status?: "PENDING" | "PROCESSING" | "COMPLETED" | "CANCELLED" | "REFUNDED";
+  status?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "REFUNDED";
   userId?: string;
   templateId?: string;
   sortBy: "createdAt" | "totalAmount" | "status";

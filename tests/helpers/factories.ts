@@ -36,7 +36,7 @@ export const createCompletedOrder = (userId: string, productId: string, email = 
     data: {
       userId,
       templateId: productId,
-      lemonsqueezyOrderId: `test_${suffix()}`,
+      orderNumber: `TEST-${suffix()}`,
       status: "COMPLETED",
       totalAmount: 49,
       licenseType: "SINGLE",

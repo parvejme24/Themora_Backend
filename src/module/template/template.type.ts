@@ -8,9 +8,6 @@ export const createTemplateSchema = z.object({
     if (isNaN(num)) throw new Error("Price must be a valid number");
     return num;
   }).pipe(z.number().positive("Price must be positive")),
-  lemonsqueezyProductId: z.string().optional(),
-  lemonsqueezyVariantId: z.string().optional(),
-  lemonsqueezyPermalink: z.string().url().optional(),
   imageUrl: z.string().url().optional(),
   screenshots: z.array(z.string().url()).optional(),
   previewLink: z.string().url().optional(),
@@ -53,7 +50,6 @@ export const createTemplateSchema = z.object({
   }).pipe(z.number().int().positive("Pages must be positive")).default(1),
   categoryId: z.string().uuid("Invalid category ID"),
   categoryName: z.string().optional(),
-  checkoutUrl: z.string().url().optional(),
 });
 
 export const updateTemplateSchema = createTemplateSchema.partial();
@@ -82,9 +78,6 @@ export interface Template {
   id: string;
   title: string;
   price: number;
-  lemonsqueezyProductId?: string | null;
-  lemonsqueezyVariantId?: string | null;
-  lemonsqueezyPermalink?: string | null;
   imageUrl?: string | null;
   screenshots: string[];
   previewLink?: string | null;
@@ -99,7 +92,6 @@ export interface Template {
   totalPurchase: number;
   categoryId: string;
   categoryName?: string;
-  checkoutUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
   category: {
@@ -122,9 +114,6 @@ export interface Template {
 export interface CreateTemplateInput {
   title: string;
   price: number;
-  lemonsqueezyProductId?: string;
-  lemonsqueezyVariantId?: string;
-  lemonsqueezyPermalink?: string;
   imageUrl?: string;
   screenshots?: string[];
   previewLink?: string;
@@ -137,15 +126,11 @@ export interface CreateTemplateInput {
   pages?: number;
   categoryId: string;
   categoryName?: string;
-  checkoutUrl?: string;
 }
 
 export interface UpdateTemplateInput {
   title?: string;
   price?: number;
-  lemonsqueezyProductId?: string;
-  lemonsqueezyVariantId?: string;
-  lemonsqueezyPermalink?: string;
   imageUrl?: string;
   screenshots?: string[];
   previewLink?: string;
@@ -158,7 +143,6 @@ export interface UpdateTemplateInput {
   pages?: number;
   categoryId?: string;
   categoryName?: string;
-  checkoutUrl?: string;
 }
 
 export interface TemplateQuery {

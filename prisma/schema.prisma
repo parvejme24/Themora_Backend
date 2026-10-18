@@ -84,59 +84,56 @@ model TemplateCategory {
 }
 
 model Template {
-  id                    String           @id @default(uuid())
-  title                 String
-  price                 Float
-  lemonsqueezyProductId String?
-  lemonsqueezyVariantId String?
-  lemonsqueezyPermalink String?
-  imageUrl              String?
-  screenshots           String[]
-  previewLink           String?
-  sourceFiles           String[]
-  shortDescription      String
-  description           String[]
-  whatsIncluded         String[]
-  keyFeatures           Json[]
-  version               Float
-  pages                 Int              @default(1)
-  downloads             Int              @default(0)
-  totalPurchase         Int              @default(0)
-  categoryId            String
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  checkoutUrl           String?
-  categoryName          String?
-  slug                  String           @unique
-  productType           ProductType      @default(WEBSITE_TEMPLATE)
-  status                ProductStatus    @default(PUBLISHED)
-  techStack             String[]         @default([])
-  platforms             String[]         @default([])
-  isFree                Boolean          @default(false)
-  isFeatured            Boolean          @default(false)
-  salePrice             Float?
-  extendedPrice         Float?
-  apkUrl                String?
-  testflightUrl         String?
-  playStoreUrl          String?
-  appStoreUrl           String?
-  videoUrl              String?
-  figmaUrl              String?
-  fileSize              String?
-  avgRating             Float            @default(0)
-  reviewCount           Int              @default(0)
-  viewCount             Int              @default(0)
-  sellerId              String?
-  publishedAt           DateTime?
-  licenses              License[]        @relation("TemplateLicenses")
-  links                 Link[]           @relation("TemplateLinks")
-  orders                OrderInvoice[]   @relation("TemplateOrders")
-  category              TemplateCategory @relation("CategoryTemplates", fields: [categoryId], references: [id])
-  purchasedBy           User[]           @relation("UserPurchases")
-  seller                User?            @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
-  tags                  Tag[]            @relation("ProductTags")
-  reviews               ProductReview[]
-  wishlistedBy          WishlistItem[]
+  id               String           @id @default(uuid())
+  title            String
+  price            Float
+  imageUrl         String?
+  screenshots      String[]
+  previewLink      String?
+  sourceFiles      String[]
+  shortDescription String
+  description      String[]
+  whatsIncluded    String[]
+  keyFeatures      Json[]
+  version          Float
+  pages            Int              @default(1)
+  downloads        Int              @default(0)
+  totalPurchase    Int              @default(0)
+  categoryId       String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  categoryName     String?
+  slug             String           @unique
+  productType      ProductType      @default(WEBSITE_TEMPLATE)
+  status           ProductStatus    @default(PUBLISHED)
+  techStack        String[]         @default([])
+  platforms        String[]         @default([])
+  isFree           Boolean          @default(false)
+  isFeatured       Boolean          @default(false)
+  salePrice        Float?
+  extendedPrice    Float?
+  apkUrl           String?
+  testflightUrl    String?
+  playStoreUrl     String?
+  appStoreUrl      String?
+  videoUrl         String?
+  figmaUrl         String?
+  fileSize         String?
+  avgRating        Float            @default(0)
+  reviewCount      Int              @default(0)
+  viewCount        Int              @default(0)
+  sellerId         String?
+  publishedAt      DateTime?
+  licenses         License[]        @relation("TemplateLicenses")
+  links            Link[]           @relation("TemplateLinks")
+  orders           OrderInvoice[]   @relation("TemplateOrders")
+  category         TemplateCategory @relation("CategoryTemplates", fields: [categoryId], references: [id])
+  purchasedBy      User[]           @relation("UserPurchases")
+  seller           User?            @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
+  tags             Tag[]            @relation("ProductTags")
+  reviews          ProductReview[]
+  wishlistedBy     WishlistItem[]
+  orderItems       OrderItem[]
 
   @@index([categoryId])
   @@index([createdAt])
@@ -203,22 +200,22 @@ model WishlistItem {
 }
 
 model PricingPlan {
-  id                    String            @id @default(uuid())
-  slug                  String            @unique
-  title                 String
-  description           String
-  price                 Float
-  currency              String            @default("USD")
-  recommended           Boolean           @default(false)
-  features              String[]
-  websiteLimit          Int?
-  lemonsqueezyVariantId String?           @unique
-  isActive              Boolean           @default(true)
-  sortOrder             Int               @default(0)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  orders                OrderInvoice[]
-  entitlements          PlanEntitlement[]
+  id           String            @id @default(uuid())
+  slug         String            @unique
+  title        String
+  description  String
+  price        Float
+  currency     String            @default("USD")
+  recommended  Boolean           @default(false)
+  features     String[]
+  websiteLimit Int?
+  isActive     Boolean           @default(true)
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  orders       OrderInvoice[]
+  entitlements PlanEntitlement[]
+  orderItems   OrderItem[]
 
   @@index([isActive, sortOrder])
   @@map("pricing_plans")
@@ -260,64 +257,109 @@ model Link {
 }
 
 model OrderInvoice {
-  id                    String           @id @default(uuid())
-  userId                String?
-  templateId            String?
-  pricingPlanId         String?
-  lemonsqueezyOrderId   String           @unique
-  lemonsqueezyInvoiceId String?
-  status                OrderStatus      @default(PENDING)
-  totalAmount           Float
-  currency              String           @default("USD")
-  licenseType           LicenseType
-  paymentMethod         String?
-  customerEmail         String
-  customerName          String?
-  billingAddress        Json?
-  downloadLinks         String[]
-  expiresAt             DateTime?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  licenses              License[]
-  planEntitlement       PlanEntitlement?
-  template              Template?        @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
-  pricingPlan           PricingPlan?     @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
-  user                  User?            @relation(fields: [userId], references: [id])
+  id                String           @id @default(uuid())
+  userId            String?
+  templateId        String?
+  pricingPlanId     String?
+  orderNumber       String           @unique
+  status            OrderStatus      @default(PENDING)
+  subtotal          Float            @default(0)
+  discountTotal     Float            @default(0)
+  totalAmount       Float
+  provider          PaymentProvider?
+  providerSessionId String?          @unique
+  providerPaymentId String?
+  chargeAmount      Float?
+  chargeCurrency    String?
+  paidAt            DateTime?
+  failureReason     String?
+  currency          String           @default("USD")
+  licenseType       LicenseType
+  paymentMethod     String?
+  customerEmail     String
+  customerName      String?
+  billingAddress    Json?
+  downloadLinks     String[]
+  expiresAt         DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  licenses          License[]
+  items             OrderItem[]
+  planEntitlement   PlanEntitlement?
+  template          Template?        @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
+  pricingPlan       PricingPlan?     @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
+  user              User?            @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([templateId])
   @@index([pricingPlanId])
-  @@index([lemonsqueezyOrderId])
+  @@index([providerPaymentId])
   @@index([status])
   @@index([createdAt])
   @@map("order_invoices")
 }
 
 model License {
-  id                  String        @id @default(uuid())
-  orderId             String?
-  templateId          String
-  userId              String?
-  licenseType         LicenseType
-  licenseKey          String        @unique
-  lemonsqueezyOrderId String
-  isActive            Boolean       @default(true)
-  maxUsage            Int?
-  usedCount           Int           @default(0)
-  expiresAt           DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  activationLimit     Int?
-  order               OrderInvoice? @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  template            Template      @relation("TemplateLicenses", fields: [templateId], references: [id], onDelete: Cascade)
-  user                User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String        @id @default(uuid())
+  orderId         String?
+  templateId      String
+  userId          String?
+  licenseType     LicenseType
+  licenseKey      String        @unique
+  orderItemId     String?
+  isActive        Boolean       @default(true)
+  maxUsage        Int?
+  usedCount       Int           @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  activationLimit Int?
+  order           OrderInvoice? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem       OrderItem?    @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  template        Template      @relation("TemplateLicenses", fields: [templateId], references: [id], onDelete: Cascade)
+  user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([templateId])
   @@index([licenseKey])
   @@index([isActive])
-  @@index([lemonsqueezyOrderId])
+  @@index([orderItemId])
   @@map("licenses")
+}
+
+model OrderItem {
+  id            String       @id @default(uuid())
+  orderId       String
+  productId     String?
+  pricingPlanId String?
+  title         String
+  licenseType   LicenseType  @default(SINGLE)
+  unitPrice     Float
+  discount      Float        @default(0)
+  total         Float
+  createdAt     DateTime     @default(now())
+  order         OrderInvoice @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Template?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  pricingPlan   PricingPlan? @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
+  licenses      License[]
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model WebhookEvent {
+  id          String          @id @default(uuid())
+  provider    PaymentProvider
+  eventId     String
+  type        String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime        @default(now())
+
+  @@unique([provider, eventId])
+  @@map("webhook_events")
 }
 
 model BlogCategory {
@@ -499,8 +541,16 @@ enum OrderStatus {
   PENDING
   PROCESSING
   COMPLETED
+  FAILED
   CANCELLED
   REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  SSLCOMMERZ
+  FREE
+  MANUAL
 }
 
 enum ProductType {

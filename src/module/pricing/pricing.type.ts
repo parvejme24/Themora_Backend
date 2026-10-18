@@ -9,7 +9,6 @@ export const pricingPlanSchema = z.object({
 	recommended: z.boolean().default(false),
 	features: z.array(z.string().trim().min(1).max(120)).min(1).max(20),
 	websiteLimit: z.number().int().positive().nullable().optional(),
-	lemonsqueezyVariantId: z.string().trim().min(1).nullable().optional(),
 	isActive: z.boolean().default(true),
 	sortOrder: z.number().int().default(0),
 });

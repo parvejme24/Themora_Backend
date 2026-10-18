@@ -70,7 +70,7 @@ async function recountCategories() {
 }
 
 async function clean() {
-  const orders = await prisma.orderInvoice.deleteMany({ where: { lemonsqueezyOrderId: { startsWith: SEED_ORDER_PREFIX } } });
+  const orders = await prisma.orderInvoice.deleteMany({ where: { orderNumber: { startsWith: SEED_ORDER_PREFIX } } });
   const users = await prisma.user.deleteMany({ where: { email: { endsWith: `@${DEMO_DOMAIN}` } } });
 
   const slugs = seedProducts.map((p) => p.slug);
@@ -204,7 +204,7 @@ async function seedOrdersAndReviews(users: { id: string; email: string; fullName
   const products = await prisma.template.findMany({
     where: { slug: { in: seedProducts.map((p) => p.slug) } },
     orderBy: { slug: "asc" },
-    select: { id: true, slug: true, price: true, salePrice: true, isFree: true },
+    select: { id: true, slug: true, title: true, price: true, salePrice: true, isFree: true },
   });
 
   // Plan all random choices first, in a fixed order, so the data is the same on every run
@@ -237,15 +237,24 @@ async function seedOrdersAndReviews(users: { id: string; email: string; fullName
     await Promise.all(
       planned.map(async (plan) => {
         if (!product.isFree) {
+          const price = product.salePrice ?? product.price;
           await prisma.orderInvoice.upsert({
-            where: { lemonsqueezyOrderId: plan.orderId },
+            where: { orderNumber: plan.orderId },
             create: {
-              lemonsqueezyOrderId: plan.orderId,
+              orderNumber: plan.orderId,
               userId: plan.user.id,
               templateId: product.id,
               status: "COMPLETED",
-              totalAmount: product.salePrice ?? product.price,
+              subtotal: price,
+              totalAmount: price,
               currency: "USD",
+              provider: plan.paymentMethod === "card" ? "STRIPE" : "SSLCOMMERZ",
+              chargeAmount: plan.paymentMethod === "card" ? price : Math.round(price * 122),
+              chargeCurrency: plan.paymentMethod === "card" ? "USD" : "BDT",
+              paidAt: plan.purchasedAt,
+              items: {
+                create: [{ productId: product.id, title: `${product.title} (${plan.licenseType === "EXTENDED" ? "Extended" : "Single"} licence)`, licenseType: plan.licenseType, unitPrice: price, total: price }],
+              },
               licenseType: plan.licenseType,
               paymentMethod: plan.paymentMethod,
               customerEmail: plan.user.email,

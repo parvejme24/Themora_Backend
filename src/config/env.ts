@@ -18,9 +18,15 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().default(""),
   CLOUDINARY_API_SECRET: z.string().default(""),
   CLOUDINARY_URL: z.string().default(""),
-  LEMONSQUEEZY_API_KEY: z.string().default(""),
-  LEMONSQUEEZY_STORE_ID: z.string().default(""),
-  LEMONSQUEEZY_WEBHOOK_SECRET: z.string().default(""),
+  // Public URL of this API, used for SSLCommerz callbacks
+  BACKEND_URL: z.string().default("http://localhost:5050"),
+  STRIPE_SECRET_KEY: z.string().default(""),
+  STRIPE_WEBHOOK_SECRET: z.string().default(""),
+  SSLCOMMERZ_STORE_ID: z.string().default(""),
+  SSLCOMMERZ_STORE_PASSWORD: z.string().default(""),
+  SSLCOMMERZ_SANDBOX: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
+  // SSLCommerz charges in BDT; catalogue prices are USD
+  USD_TO_BDT_RATE: z.coerce.number().positive().default(122),
   VERCEL: z.string().optional(),
 });
 

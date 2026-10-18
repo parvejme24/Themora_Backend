@@ -34,7 +34,7 @@ router.get('/orders/:id', optionalAuth, validateOrderId, getOrderById);
 router.get('/user/orders', authenticateAndCheckStatus, validateOrderQuery, getUserOrders);
 
 // Create order (user or admin)
-router.post('/orders', authenticateAndCheckStatus, validateCreateOrder, createOrder);
+router.post('/orders', authenticateAdminAndCheckStatus, validateCreateOrder, createOrder);
 router.patch('/orders/:id/status', authenticateAdminAndCheckStatus, validateOrderId, validateUpdateOrderStatus, updateOrderStatus);
 
 export default router;
