@@ -1,5 +1,6 @@
 import { Request, Response, Router } from "express";
-import { authenticateAdminAndCheckStatus, optionalAuth } from "../../middleware/authMiddleware";
+import { optionalAuth } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendResponse } from "../../utils/sendResponse";
 import { validateRequest } from "../../utils/validateRequest";
@@ -40,7 +41,7 @@ router.post(
 
 router.get(
   "/admin/coupons",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ query: couponQuerySchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { coupons, pagination } = await couponService.list((req as any).validatedQuery);
@@ -50,7 +51,7 @@ router.get(
 
 router.get(
   "/admin/coupons/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ params: couponIdParamSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     sendResponse(res, { message: "Coupon fetched", data: await couponService.get(req.params.id) });
@@ -59,7 +60,7 @@ router.get(
 
 router.post(
   "/admin/coupons",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ body: createCouponSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const coupon = await couponService.create((req as any).validatedData);
@@ -69,7 +70,7 @@ router.post(
 
 router.patch(
   "/admin/coupons/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ params: couponIdParamSchema, body: updateCouponSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const coupon = await couponService.update(req.params.id, (req as any).validatedData);
@@ -79,7 +80,7 @@ router.patch(
 
 router.delete(
   "/admin/coupons/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ params: couponIdParamSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { deactivated } = await couponService.remove(req.params.id);

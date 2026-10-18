@@ -5,6 +5,7 @@ import { AppError } from "../../utils/AppError";
 import { runInBackground } from "../../utils/background";
 import { sendRefundDecisionEmail } from "../../utils/email";
 import { buildPaginationMeta } from "../../utils/pagination";
+import { notificationService } from "../notification/notification.service";
 import { fulfillmentService } from "../payment/fulfillment.service";
 import { sslcommerzGateway } from "../payment/gateways/sslcommerz.gateway";
 import { stripeGateway } from "../payment/gateways/stripe.gateway";
@@ -115,6 +116,12 @@ export class RefundService {
       data: { status: "REFUNDED", providerRefundId, adminNote: note ?? null, resolvedById: adminId, resolvedAt: new Date() },
       include: requestInclude,
     });
+    await notificationService.notify(updated.user.id, {
+      type: "refund_update",
+      title: `Refund approved for order ${updated.order.orderNumber}`,
+      body: "The money is on its way back to your original payment method.",
+      link: "/dashboard/purchases",
+    });
     runInBackground("refund approved email", () =>
       sendRefundDecisionEmail(updated.user.email, updated.user.fullName, updated.order.orderNumber, true, note)
     );
@@ -127,6 +134,12 @@ export class RefundService {
       where: { id: requestId },
       data: { status: "REJECTED", adminNote: note, resolvedById: adminId, resolvedAt: new Date() },
       include: requestInclude,
+    });
+    await notificationService.notify(updated.user.id, {
+      type: "refund_update",
+      title: `Refund request for order ${updated.order.orderNumber} was not approved`,
+      body: note,
+      link: "/dashboard/purchases",
     });
     runInBackground("refund rejected email", () =>
       sendRefundDecisionEmail(updated.user.email, updated.user.fullName, updated.order.orderNumber, false, note)

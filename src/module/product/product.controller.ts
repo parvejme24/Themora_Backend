@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { runInBackground } from "../../utils/background";
 import { sendResponse } from "../../utils/sendResponse";
 import { productService } from "./product.service";
+import { analyticsService } from "../analytics/analytics.service";
 
 const clearProductCaches = () => {
   clearCache("/api/v1/products");
@@ -28,7 +29,14 @@ export const listTags = asyncHandler(async (_req: Request, res: Response) => {
 
 export const getProduct = asyncHandler(async (req: Request, res: Response) => {
   const product = await productService.getPublic(req.params.slug);
-  runInBackground("record product view", () => productService.recordView(product.id));
+  const userId = (req as any).user?.id as string | undefined;
+  runInBackground("record product view", () =>
+    Promise.all([
+      productService.recordView(product.id),
+      analyticsService.recordView(product.id),
+      userId ? analyticsService.rememberView(userId, product.id) : null,
+    ])
+  );
   sendResponse(res, { message: "Product fetched successfully", data: product });
 });
 

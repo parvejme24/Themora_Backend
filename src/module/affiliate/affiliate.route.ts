@@ -1,7 +1,8 @@
 import { Request, Response, Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendResponse } from "../../utils/sendResponse";
 import { validateRequest } from "../../utils/validateRequest";
@@ -127,7 +128,7 @@ router.post(
 // Admin
 router.get(
   "/admin/affiliates",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ query: adminListSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { affiliates, pagination } = await affiliateService.adminList((req as any).validatedQuery);
@@ -137,7 +138,7 @@ router.get(
 
 router.patch(
   "/admin/affiliates/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ params: idParamSchema, body: adminUpdateSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     sendResponse(res, { message: "Affiliate updated", data: await affiliateService.adminUpdate(req.params.id, (req as any).validatedData) });
@@ -146,7 +147,7 @@ router.patch(
 
 router.get(
   "/admin/affiliate-payouts",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ query: adminPayoutListSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { payouts, pagination } = await affiliateService.adminPayouts((req as any).validatedQuery);
@@ -156,7 +157,7 @@ router.get(
 
 router.post(
   "/admin/affiliate-payouts/:id/pay",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ params: idParamSchema, body: z.object({ reference: z.string().trim().min(3).max(200) }) }),
   asyncHandler(async (req: Request, res: Response) => {
     const payout = await affiliateService.markPayoutPaid(req.params.id, (req as any).validatedData.reference);
@@ -166,7 +167,7 @@ router.post(
 
 router.post(
   "/admin/affiliate-payouts/:id/reject",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   validateRequest({ params: idParamSchema, body: z.object({ note: z.string().trim().min(5).max(500) }) }),
   asyncHandler(async (req: Request, res: Response) => {
     const payout = await affiliateService.rejectPayout(req.params.id, (req as any).validatedData.note);

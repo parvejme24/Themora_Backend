@@ -7,6 +7,7 @@ import { sendProductUpdateEmail } from "../../utils/email";
 import { canDownloadProduct } from "../product/product-access";
 import { findProductByIdOrSlug, productCardSelect } from "../product/product.service";
 import { CreateVersionInput, UpdateVersionInput } from "./download.validation";
+import { notificationService } from "../notification/notification.service";
 
 const DAILY_DOWNLOAD_LIMIT = 50;
 const LINK_TTL_SECONDS = 300;
@@ -95,7 +96,7 @@ export class DownloadService {
     if (!product) throw AppError.notFound("Product not found");
     if (!(await canDownloadProduct(user, product))) throw AppError.forbidden("Purchase this product to download its files");
 
-    if (user.role !== "ADMIN") {
+    if (user.role === "USER") {
       const recent = await prisma.downloadLog.count({
         where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
       });
@@ -209,8 +210,12 @@ export class DownloadService {
   private async notifyBuyers(product: { id: string; title: string; slug: string }, version: string, changelog: string) {
     const licenses = await prisma.license.findMany({
       where: { templateId: product.id, isActive: true, user: { isNot: null } },
-      select: { user: { select: { email: true, fullName: true } } },
+      select: { user: { select: { id: true, email: true, fullName: true } } },
     });
+    await notificationService.notifyMany(
+      licenses.flatMap((license) => (license.user ? [license.user.id] : [])),
+      { type: "product_update", title: `${product.title} ${version} is available`, link: "/dashboard/downloads" }
+    );
     const recipients = new Map(licenses.flatMap((license) => (license.user ? [[license.user.email, license.user.fullName]] : [])));
     for (const [email, name] of recipients) {
       await sendProductUpdateEmail(email, name, product, version, changelog).catch((error) =>

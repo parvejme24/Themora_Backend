@@ -15,6 +15,9 @@ import {
 } from "../module/product/product.validation";
 import { approveSchema, rejectSchema, requestSchema } from "../module/refund/refund.route";
 import { applySchema, clickSchema } from "../module/affiliate/affiliate.route";
+import { createTicketSchema, replySchema } from "../module/ticket/ticket.route";
+import { preferencesSchema } from "../module/notification/notification.route";
+import { challengeSchema } from "../module/two-factor/two-factor.route";
 
 type Access = "public" | "user" | "admin";
 
@@ -96,6 +99,26 @@ const endpoints: Endpoint[] = [
   { method: "get", path: "/admin/affiliates", tag: "Admin", summary: "Affiliates with stats", access: "admin" },
   { method: "get", path: "/admin/affiliate-payouts", tag: "Admin", summary: "Payout requests", access: "admin" },
   { method: "post", path: "/admin/affiliate-payouts/{id}/pay", tag: "Admin", summary: "Mark a payout paid (with transfer reference)", access: "admin" },
+
+  // Support, notifications, 2FA, personalisation
+  { method: "post", path: "/me/tickets", tag: "Support", summary: "Open a support ticket", access: "user", body: createTicketSchema },
+  { method: "get", path: "/me/tickets", tag: "Support", summary: "My tickets", access: "user" },
+  { method: "get", path: "/tickets/{id}", tag: "Support", summary: "Ticket with messages (owner or support staff)", access: "user" },
+  { method: "post", path: "/tickets/{id}/messages", tag: "Support", summary: "Reply to a ticket", access: "user", body: replySchema },
+  { method: "post", path: "/tickets/{id}/close", tag: "Support", summary: "Close a ticket", access: "user" },
+  { method: "get", path: "/me/notifications", tag: "Account", summary: "Notifications with unread count", access: "user" },
+  { method: "post", path: "/me/notifications/read-all", tag: "Account", summary: "Mark all notifications read", access: "user" },
+  { method: "get", path: "/me/preferences", tag: "Account", summary: "Preferences, role and permissions", access: "user" },
+  { method: "patch", path: "/me/preferences", tag: "Account", summary: "Update email preferences", access: "user", body: preferencesSchema },
+  { method: "post", path: "/me/2fa/setup", tag: "Auth", summary: "Start two-factor setup (returns otpauth URL)", access: "user" },
+  { method: "post", path: "/me/2fa/enable", tag: "Auth", summary: "Turn on two-factor with a code; returns recovery codes", access: "user" },
+  { method: "post", path: "/auth/2fa/verify", tag: "Auth", summary: "Second sign-in step for two-factor accounts", access: "public", body: challengeSchema },
+  { method: "get", path: "/me/recently-viewed", tag: "Products", summary: "Recently viewed products", access: "user" },
+  { method: "get", path: "/products/{slug}/also-bought", tag: "Products", summary: "Customers also bought", access: "public" },
+  { method: "get", path: "/admin/tickets", tag: "Admin", summary: "Support queue (support staff)", access: "admin" },
+  { method: "get", path: "/admin/analytics/overview", tag: "Admin", summary: "Revenue, orders, conversion, top products, MRR", access: "admin" },
+  { method: "get", path: "/admin/analytics/products/{id}", tag: "Admin", summary: "Daily views, sales and revenue for a product", access: "admin" },
+  { method: "get", path: "/admin/audit-logs", tag: "Admin", summary: "Audit log of staff actions", access: "admin" },
 
   // Admin
   { method: "get", path: "/admin/products", tag: "Admin", summary: "All products including drafts", access: "admin", query: adminProductQuerySchema },

@@ -64,7 +64,7 @@ export class CronService {
       where: {
         reminderSentAt: null,
         items: { some: {} },
-        user: { isBanned: false, isTrashed: false },
+        user: { isBanned: false, isTrashed: false, marketingEmails: true },
       },
       include: {
         user: { select: { email: true, fullName: true } },

@@ -8,51 +8,63 @@ datasource db {
 }
 
 model User {
-  id                      String               @id @default(uuid())
-  fullName                String
-  email                   String               @unique
-  password                String?
-  role                    UserRole             @default(USER)
-  isBanned                Boolean              @default(false)
-  isTrashed               Boolean              @default(false)
-  isDeletedPermanently    Boolean              @default(false)
-  otpCode                 String?
-  otpPurpose              OtpPurpose?
-  otpExpiresAt            DateTime?
-  otpVerified             Boolean              @default(false)
-  otpAttempts             Int                  @default(0)
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
-  isLoggedIn              Boolean              @default(false)
-  lastLoginAt             DateTime?
-  nextAuthExpiresAt       DateTime?
-  nextAuthSecret          String?
-  provider                String?
-  providerId              String?
-  profile                 UserProfile?
-  blogLikes               BlogLike[]           @relation("UserLikes")
-  blogReactions           BlogReaction[]       @relation("UserReactions")
-  adminReplies            BlogReviewReply[]    @relation("AdminReplies")
-  blogReviews             BlogReview[]         @relation("UserReviews")
-  blogs                   Blog[]               @relation("BlogAuthor")
-  contactReplies          ContactReply[]       @relation("UserContactReplies")
-  contacts                Contact[]            @relation("UserContacts")
-  licenses                License[]
-  newsletterSubscriptions Newsletter[]         @relation("UserNewsletterSubscriptions")
-  orders                  OrderInvoice[]
-  planEntitlements        PlanEntitlement[]
-  purchasedTemplates      Template[]           @relation("UserPurchases")
-  sellerProducts          Template[]           @relation("SellerProducts")
-  productReviews          ProductReview[]      @relation("UserProductReviews")
-  productReviewReplies    ProductReviewReply[] @relation("UserProductReviewReplies")
-  wishlist                WishlistItem[]       @relation("UserWishlist")
-  cart                    Cart?
-  subscriptions           Subscription[]
-  couponRedemptions       CouponRedemption[]
-  downloadLogs            DownloadLog[]
-  refundRequests          RefundRequest[]      @relation("RefundRequester")
-  resolvedRefunds         RefundRequest[]      @relation("RefundResolver")
-  affiliate               Affiliate?
+  id                          String               @id @default(uuid())
+  fullName                    String
+  email                       String               @unique
+  password                    String?
+  role                        UserRole             @default(USER)
+  isBanned                    Boolean              @default(false)
+  isTrashed                   Boolean              @default(false)
+  isDeletedPermanently        Boolean              @default(false)
+  otpCode                     String?
+  otpPurpose                  OtpPurpose?
+  otpExpiresAt                DateTime?
+  otpVerified                 Boolean              @default(false)
+  otpAttempts                 Int                  @default(0)
+  marketingEmails             Boolean              @default(true)
+  twoFactorEnabled            Boolean              @default(false)
+  twoFactorSecret             String?
+  twoFactorRecoveryCodes      String[]             @default([])
+  twoFactorChallenge          String?
+  twoFactorChallengeExpiresAt DateTime?
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+  isLoggedIn                  Boolean              @default(false)
+  lastLoginAt                 DateTime?
+  nextAuthExpiresAt           DateTime?
+  nextAuthSecret              String?
+  provider                    String?
+  providerId                  String?
+  profile                     UserProfile?
+  blogLikes                   BlogLike[]           @relation("UserLikes")
+  blogReactions               BlogReaction[]       @relation("UserReactions")
+  adminReplies                BlogReviewReply[]    @relation("AdminReplies")
+  blogReviews                 BlogReview[]         @relation("UserReviews")
+  blogs                       Blog[]               @relation("BlogAuthor")
+  contactReplies              ContactReply[]       @relation("UserContactReplies")
+  contacts                    Contact[]            @relation("UserContacts")
+  licenses                    License[]
+  newsletterSubscriptions     Newsletter[]         @relation("UserNewsletterSubscriptions")
+  orders                      OrderInvoice[]
+  planEntitlements            PlanEntitlement[]
+  purchasedTemplates          Template[]           @relation("UserPurchases")
+  sellerProducts              Template[]           @relation("SellerProducts")
+  productReviews              ProductReview[]      @relation("UserProductReviews")
+  productReviewReplies        ProductReviewReply[] @relation("UserProductReviewReplies")
+  wishlist                    WishlistItem[]       @relation("UserWishlist")
+  cart                        Cart?
+  subscriptions               Subscription[]
+  couponRedemptions           CouponRedemption[]
+  downloadLogs                DownloadLog[]
+  refundRequests              RefundRequest[]      @relation("RefundRequester")
+  resolvedRefunds             RefundRequest[]      @relation("RefundResolver")
+  affiliate                   Affiliate?
+  tickets                     SupportTicket[]      @relation("TicketCustomer")
+  assignedTickets             SupportTicket[]      @relation("TicketAssignee")
+  ticketMessages              TicketMessage[]
+  notifications               Notification[]
+  auditLogs                   AuditLog[]
+  recentlyViewed              RecentlyViewed[]
 
   @@index([email])
   @@index([role])
@@ -92,7 +104,7 @@ model TemplateCategory {
 }
 
 model Template {
-  id               String           @id @default(uuid())
+  id               String             @id @default(uuid())
   title            String
   price            Float
   imageUrl         String?
@@ -104,20 +116,20 @@ model Template {
   whatsIncluded    String[]
   keyFeatures      Json[]
   version          Float
-  pages            Int              @default(1)
-  downloads        Int              @default(0)
-  totalPurchase    Int              @default(0)
+  pages            Int                @default(1)
+  downloads        Int                @default(0)
+  totalPurchase    Int                @default(0)
   categoryId       String
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   categoryName     String?
-  slug             String           @unique
-  productType      ProductType      @default(WEBSITE_TEMPLATE)
-  status           ProductStatus    @default(PUBLISHED)
-  techStack        String[]         @default([])
-  platforms        String[]         @default([])
-  isFree           Boolean          @default(false)
-  isFeatured       Boolean          @default(false)
+  slug             String             @unique
+  productType      ProductType        @default(WEBSITE_TEMPLATE)
+  status           ProductStatus      @default(PUBLISHED)
+  techStack        String[]           @default([])
+  platforms        String[]           @default([])
+  isFree           Boolean            @default(false)
+  isFeatured       Boolean            @default(false)
   salePrice        Float?
   saleEndsAt       DateTime?
   extendedPrice    Float?
@@ -128,24 +140,27 @@ model Template {
   videoUrl         String?
   figmaUrl         String?
   fileSize         String?
-  avgRating        Float            @default(0)
-  reviewCount      Int              @default(0)
-  viewCount        Int              @default(0)
+  avgRating        Float              @default(0)
+  reviewCount      Int                @default(0)
+  viewCount        Int                @default(0)
   sellerId         String?
   publishedAt      DateTime?
-  licenses         License[]        @relation("TemplateLicenses")
-  links            Link[]           @relation("TemplateLinks")
-  orders           OrderInvoice[]   @relation("TemplateOrders")
-  category         TemplateCategory @relation("CategoryTemplates", fields: [categoryId], references: [id])
-  purchasedBy      User[]           @relation("UserPurchases")
-  seller           User?            @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
-  tags             Tag[]            @relation("ProductTags")
+  licenses         License[]          @relation("TemplateLicenses")
+  links            Link[]             @relation("TemplateLinks")
+  orders           OrderInvoice[]     @relation("TemplateOrders")
+  category         TemplateCategory   @relation("CategoryTemplates", fields: [categoryId], references: [id])
+  purchasedBy      User[]             @relation("UserPurchases")
+  seller           User?              @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
+  tags             Tag[]              @relation("ProductTags")
   reviews          ProductReview[]
   wishlistedBy     WishlistItem[]
   orderItems       OrderItem[]
   cartItems        CartItem[]
   versions         ProductVersion[]
   downloadLogs     DownloadLog[]
+  tickets          SupportTicket[]
+  dailyStats       ProductDailyStat[]
+  recentlyViewed   RecentlyViewed[]
 
   @@index([categoryId])
   @@index([createdAt])
@@ -304,6 +319,7 @@ model OrderInvoice {
   updatedAt         DateTime          @updatedAt
   licenses          License[]
   items             OrderItem[]
+  tickets           SupportTicket[]
   affiliate         Affiliate?        @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
   referral          Referral?
   refundRequests    RefundRequest[]
@@ -627,6 +643,107 @@ model AffiliatePayout {
   @@map("affiliate_payouts")
 }
 
+model SupportTicket {
+  id            String          @id @default(uuid())
+  number        Int             @unique @default(autoincrement())
+  userId        String
+  productId     String?
+  orderId       String?
+  subject       String
+  status        TicketStatus    @default(AWAITING_SUPPORT)
+  priority      TicketPriority  @default(NORMAL)
+  assignedToId  String?
+  lastMessageAt DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  user          User            @relation("TicketCustomer", fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo    User?           @relation("TicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  product       Template?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order         OrderInvoice?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  messages      TicketMessage[]
+
+  @@index([userId, status])
+  @@index([status, lastMessageAt])
+  @@index([assignedToId])
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id          String        @id @default(uuid())
+  ticketId    String
+  authorId    String
+  body        String
+  isStaff     Boolean       @default(false)
+  attachments String[]      @default([])
+  createdAt   DateTime      @default(now())
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actorRole  String
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ProductDailyStat {
+  id        String   @id @default(uuid())
+  productId String
+  date      DateTime @db.Date
+  views     Int      @default(0)
+  sales     Int      @default(0)
+  revenue   Float    @default(0)
+  product   Template @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, date])
+  @@index([date])
+  @@map("product_daily_stats")
+}
+
+model RecentlyViewed {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  viewedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Template @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId, viewedAt])
+  @@map("recently_viewed")
+}
+
 model WebhookEvent {
   id          String          @id @default(uuid())
   provider    PaymentProvider
@@ -808,6 +925,9 @@ model Newsletter {
 
 enum UserRole {
   ADMIN
+  SUPPORT
+  EDITOR
+  MODERATOR
   USER
 }
 
@@ -867,6 +987,20 @@ enum PayoutStatus {
   REQUESTED
   PAID
   REJECTED
+}
+
+enum TicketStatus {
+  AWAITING_SUPPORT
+  AWAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 enum PaymentProvider {

@@ -4,6 +4,7 @@ import { prisma } from "../../config/database";
 import { env } from "../../config/env";
 import { AppError } from "../../utils/AppError";
 import { buildPaginationMeta } from "../../utils/pagination";
+import { notificationService } from "../notification/notification.service";
 
 const DAY = 24 * 60 * 60 * 1000;
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
@@ -261,6 +262,12 @@ export class AffiliateService {
     const payout = await this.findOpenPayout(id);
     return prisma.$transaction(async (tx) => {
       await tx.referral.updateMany({ where: { payoutId: payout.id, status: "APPROVED" }, data: { status: "PAID" } });
+      const affiliate = await tx.affiliate.findUniqueOrThrow({ where: { id: payout.affiliateId }, select: { userId: true } });
+      await notificationService.notify(
+        affiliate.userId,
+        { type: "payout_paid", title: `Your $${payout.amount.toFixed(2)} payout has been sent`, body: `Reference: ${reference}`, link: "/dashboard/affiliate" },
+        tx
+      );
       return tx.affiliatePayout.update({ where: { id }, data: { status: "PAID", reference, paidAt: new Date() } });
     });
   }

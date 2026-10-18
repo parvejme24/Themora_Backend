@@ -1,6 +1,7 @@
 import { Request, Response, Router } from "express";
 import { z } from "zod";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendResponse } from "../../utils/sendResponse";
 import { validateRequest } from "../../utils/validateRequest";
@@ -40,7 +41,7 @@ router.get(
 
 router.get(
   "/admin/refund-requests",
-  authenticateAdminAndCheckStatus,
+  authorize("support"),
   validateRequest({ query: adminQuerySchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { requests, pagination } = await refundService.adminList((req as any).validatedQuery);
@@ -50,7 +51,7 @@ router.get(
 
 router.post(
   "/admin/refund-requests/:id/approve",
-  authenticateAdminAndCheckStatus,
+  authorize("support"),
   validateRequest({ params: idParamSchema, body: approveSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const request = await refundService.approve(req.params.id, userOf(req).id, (req as any).validatedData.note);
@@ -60,7 +61,7 @@ router.post(
 
 router.post(
   "/admin/refund-requests/:id/reject",
-  authenticateAdminAndCheckStatus,
+  authorize("support"),
   validateRequest({ params: idParamSchema, body: rejectSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const request = await refundService.reject(req.params.id, userOf(req).id, (req as any).validatedData.note);

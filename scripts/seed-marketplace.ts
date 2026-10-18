@@ -513,6 +513,62 @@ async function seedAffiliate() {
   console.log(`🤝 Demo affiliate AYESHA20 with 180 clicks and ${orders.length} commissions`);
 }
 
+// 60 days of daily views/sales so the analytics dashboards have history
+async function seedAnalytics() {
+  const products = await prisma.template.findMany({
+    where: { slug: { in: seedProducts.map((p) => p.slug) } },
+    select: { id: true, viewCount: true, price: true, salePrice: true },
+  });
+  if ((await prisma.productDailyStat.count({ where: { productId: { in: products.map((p) => p.id) } } })) > 0) return;
+  const today = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
+  const rows = products.flatMap((product) =>
+    Array.from({ length: 60 }, (_, i) => {
+      const views = Math.round((product.viewCount / 240) * (0.5 + random()));
+      const sales = random() < 0.35 ? 1 + Math.floor(random() * 2) : 0;
+      return {
+        productId: product.id,
+        date: new Date(today.getTime() - i * 86_400_000),
+        views,
+        sales,
+        revenue: Math.round(sales * (product.salePrice ?? product.price) * 100) / 100,
+      };
+    })
+  );
+  await prisma.productDailyStat.createMany({ data: rows });
+  console.log(`📈 Created ${rows.length} daily analytics rows`);
+}
+
+async function seedTickets() {
+  const buyer = await prisma.user.findUnique({ where: { email: `daniel.okafor@${DEMO_DOMAIN}` }, select: { id: true } });
+  const product = await prisma.template.findUnique({ where: { slug: "nimbus-nextjs-saas-starter" }, select: { id: true } });
+  const agent = await prisma.user.findFirst({ where: { role: "ADMIN" }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  if (!buyer || !product || !agent || (await prisma.supportTicket.count({ where: { userId: buyer.id } })) > 0) return;
+  await prisma.supportTicket.create({
+    data: {
+      userId: buyer.id,
+      productId: product.id,
+      subject: "Stripe webhook not firing locally",
+      status: "AWAITING_CUSTOMER",
+      assignedToId: agent.id,
+      messages: {
+        create: [
+          { authorId: buyer.id, body: "Checkout works but the subscription never activates on my machine. Am I missing a step?", createdAt: daysAgo(2) },
+          { authorId: agent.id, isStaff: true, body: "Run `stripe listen --forward-to localhost:3000/api/webhooks/stripe` and copy the printed secret into STRIPE_WEBHOOK_SECRET.", createdAt: daysAgo(1) },
+        ],
+      },
+    },
+  });
+  await prisma.supportTicket.create({
+    data: {
+      userId: buyer.id,
+      subject: "Invoice with company details",
+      priority: "LOW",
+      messages: { create: [{ authorId: buyer.id, body: "Could you add my company name and VAT number to my last invoice?" }] },
+    },
+  });
+  console.log("🎫 Created 2 demo support tickets");
+}
+
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "");
   console.log(`🎯 Target: ${url.hostname} (schema: ${url.searchParams.get("schema") ?? "public"})`);
@@ -527,6 +583,8 @@ async function main() {
     await seedCommerce();
     await seedVersions();
     await seedAffiliate();
+    await seedAnalytics();
+    await seedTickets();
     console.log("✅ Marketplace seed complete");
   }
   console.log(`⏱  ${Math.round((Date.now() - startedAt) / 1000)}s`);

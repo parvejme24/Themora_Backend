@@ -22,6 +22,10 @@ export const otpMatches = (userId: string, otp: string, storedHash: string | nul
 
 // Fields that must never leave the API
 export const toSafeUser = <T extends Record<string, unknown>>(user: T) => {
-  const { password, otpCode, otpPurpose, otpExpiresAt, otpAttempts, nextAuthSecret, ...safe } = user;
+  const {
+    password, otpCode, otpPurpose, otpExpiresAt, otpAttempts, nextAuthSecret,
+    twoFactorSecret, twoFactorRecoveryCodes, twoFactorChallenge, twoFactorChallengeExpiresAt,
+    ...safe
+  } = user;
   return safe;
 };

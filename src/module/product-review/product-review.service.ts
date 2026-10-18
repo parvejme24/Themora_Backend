@@ -3,6 +3,7 @@ import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
 import { buildPaginationMeta } from "../../utils/pagination";
 import { findProductByIdOrSlug, userOwnsProduct } from "../product/product.service";
+import { hasPermission } from "../../middleware/permissions";
 import { AdminReviewQuery, CreateReviewInput, ReviewQuery, UpdateReviewInput } from "./product-review.validation";
 
 interface Actor {
@@ -122,7 +123,7 @@ export class ProductReviewService {
 
   async remove(reviewId: string, actor: Actor) {
     const review = await this.findOrFail(reviewId);
-    if (review.userId !== actor.id && actor.role !== "ADMIN") {
+    if (review.userId !== actor.id && !hasPermission(actor.role, "reviews:moderate")) {
       throw AppError.forbidden("You can only delete your own review");
     }
 
@@ -174,7 +175,7 @@ export class ProductReviewService {
       select: { id: true, product: { select: { sellerId: true } } },
     });
     if (!review) throw AppError.notFound("Review not found");
-    if (actor.role !== "ADMIN" && review.product.sellerId !== actor.id) {
+    if (!hasPermission(actor.role, "reviews:moderate") && review.product.sellerId !== actor.id) {
       throw AppError.forbidden("Only the seller or an admin can reply to reviews");
     }
 
@@ -187,7 +188,7 @@ export class ProductReviewService {
   async removeReply(replyId: string, actor: Actor) {
     const reply = await prisma.productReviewReply.findUnique({ where: { id: replyId }, select: { userId: true } });
     if (!reply) throw AppError.notFound("Reply not found");
-    if (reply.userId !== actor.id && actor.role !== "ADMIN") throw AppError.forbidden("You can only delete your own reply");
+    if (reply.userId !== actor.id && !hasPermission(actor.role, "reviews:moderate")) throw AppError.forbidden("You can only delete your own reply");
     await prisma.productReviewReply.delete({ where: { id: replyId } });
   }
 

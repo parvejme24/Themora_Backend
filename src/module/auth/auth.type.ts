@@ -111,5 +111,5 @@ export const logoutSchema = z.object({
 
 // Change user role schema
 export const changeUserRoleSchema = z.object({
-  role: z.enum(["ADMIN", "USER"]),
+  role: z.enum(["ADMIN", "SUPPORT", "EDITOR", "MODERATOR", "USER"]),
 });

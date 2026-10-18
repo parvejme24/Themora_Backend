@@ -38,6 +38,8 @@ const envSchema = z.object({
   AFFILIATE_MIN_PAYOUT: z.coerce.number().min(0).default(50),
   AFFILIATE_AUTO_APPROVE: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
   SENTRY_DSN: z.string().default(""),
+  // Encrypts stored secrets such as two-factor keys; any long random string
+  ENCRYPTION_KEY: z.string().default(""),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   VERCEL: z.string().optional(),
 });

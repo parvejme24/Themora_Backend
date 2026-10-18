@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 import { validateRequest } from "../../utils/validateRequest";
 import {
   adminListReviews,
@@ -53,10 +54,10 @@ router.post(
 router.delete("/review-replies/:id", authenticateAndCheckStatus, validateRequest({ params: reviewIdParamSchema }), deleteReviewReply);
 
 // Admin moderation
-router.get("/admin/reviews", authenticateAdminAndCheckStatus, validateRequest({ query: adminReviewQuerySchema }), adminListReviews);
+router.get("/admin/reviews", authorize("reviews:moderate"), validateRequest({ query: adminReviewQuerySchema }), adminListReviews);
 router.patch(
   "/admin/reviews/:id/status",
-  authenticateAdminAndCheckStatus,
+  authorize("reviews:moderate"),
   validateRequest({ params: reviewIdParamSchema, body: reviewStatusSchema }),
   setReviewStatus
 );

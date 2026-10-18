@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authenticateAdminAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
+import { optionalAuth } from "../../middleware/authMiddleware";
 import { cacheResponse } from "../../middleware/cache";
 import { validateRequest } from "../../utils/validateRequest";
 import {
@@ -34,7 +35,7 @@ const router = Router();
 router.get("/products", cacheResponse(30), validateRequest({ query: productQuerySchema }), listProducts);
 router.get("/products/facets", cacheResponse(60), getProductFacets);
 router.get("/tags", cacheResponse(60), listTags);
-router.get("/products/:slug", validateRequest({ params: productSlugParamSchema }), getProduct);
+router.get("/products/:slug", optionalAuth, validateRequest({ params: productSlugParamSchema }), getProduct);
 router.get(
   "/products/:slug/related",
   cacheResponse(60),
@@ -43,18 +44,18 @@ router.get(
 );
 
 // Admin
-router.get("/admin/products", authenticateAdminAndCheckStatus, validateRequest({ query: adminProductQuerySchema }), adminListProducts);
-router.get("/admin/products/:id", authenticateAdminAndCheckStatus, validateRequest({ params: productIdParamSchema }), adminGetProduct);
-router.post("/admin/products", authenticateAdminAndCheckStatus, validateRequest({ body: createProductSchema }), createProduct);
+router.get("/admin/products", authorize("catalog:write"), validateRequest({ query: adminProductQuerySchema }), adminListProducts);
+router.get("/admin/products/:id", authorize("catalog:write"), validateRequest({ params: productIdParamSchema }), adminGetProduct);
+router.post("/admin/products", authorize("catalog:write"), validateRequest({ body: createProductSchema }), createProduct);
 router.patch(
   "/admin/products/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("catalog:write"),
   validateRequest({ params: productIdParamSchema, body: updateProductSchema }),
   updateProduct
 );
-router.delete("/admin/products/:id", authenticateAdminAndCheckStatus, validateRequest({ params: productIdParamSchema }), deleteProduct);
+router.delete("/admin/products/:id", authorize("catalog:write"), validateRequest({ params: productIdParamSchema }), deleteProduct);
 
-router.post("/admin/sales", authenticateAdminAndCheckStatus, validateRequest({ body: saleSchema }), startSale);
-router.delete("/admin/sales", authenticateAdminAndCheckStatus, validateRequest({ body: endSaleSchema }), endSale);
+router.post("/admin/sales", authorize("catalog:write"), validateRequest({ body: saleSchema }), startSale);
+router.delete("/admin/sales", authorize("catalog:write"), validateRequest({ body: endSaleSchema }), endSale);
 
 export default router;

@@ -22,9 +22,17 @@ import licenseRoutes from "../module/license/license.route";
 import refundRoutes from "../module/refund/refund.route";
 import cronRoutes from "../module/cron/cron.route";
 import affiliateRoutes from "../module/affiliate/affiliate.route";
+import ticketRoutes from "../module/ticket/ticket.route";
+import notificationRoutes from "../module/notification/notification.route";
+import analyticsRoutes from "../module/analytics/analytics.route";
+import twoFactorRoutes from "../module/two-factor/two-factor.route";
+import { auditStaffActions } from "../middleware/audit";
 
 const router = Router();
 const apiV1Router = Router();
+
+// Records every successful staff change to admin resources
+apiV1Router.use(auditStaffActions);
 
 // Auth routes
 apiV1Router.use(authRoutes);
@@ -67,6 +75,12 @@ apiV1Router.use(refundRoutes);
 
 // Affiliate program
 apiV1Router.use(affiliateRoutes);
+
+// Support, notifications, analytics and two-factor sign-in
+apiV1Router.use(ticketRoutes);
+apiV1Router.use(notificationRoutes);
+apiV1Router.use(analyticsRoutes);
+apiV1Router.use(twoFactorRoutes);
 
 // Scheduled jobs (Vercel Cron)
 apiV1Router.use(cronRoutes);

@@ -1,5 +1,6 @@
 import { Request, Response, Router } from "express";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 import { clearCache } from "../../middleware/cache";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { signUpload } from "../../utils/cloudinary";
@@ -51,7 +52,7 @@ router.post(
 // Admin: direct-to-Cloudinary uploads and versions
 router.post(
   "/admin/uploads/signature",
-  authenticateAdminAndCheckStatus,
+  authorize("catalog:write"),
   validateRequest({ body: uploadSignatureSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     sendResponse(res, { message: "Upload signature created", data: signUpload((req as any).validatedData.kind) });
@@ -60,7 +61,7 @@ router.post(
 
 router.get(
   "/admin/products/:productId/versions",
-  authenticateAdminAndCheckStatus,
+  authorize("catalog:write"),
   validateRequest({ params: productIdParamSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     sendResponse(res, { message: "Versions fetched", data: await downloadService.listVersions(req.params.productId) });
@@ -69,7 +70,7 @@ router.get(
 
 router.post(
   "/admin/products/:productId/versions",
-  authenticateAdminAndCheckStatus,
+  authorize("catalog:write"),
   validateRequest({ params: productIdParamSchema, body: createVersionSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const version = await downloadService.createVersion(req.params.productId, (req as any).validatedData);
@@ -80,7 +81,7 @@ router.post(
 
 router.patch(
   "/admin/versions/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("catalog:write"),
   validateRequest({ params: idParamSchema, body: updateVersionSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     sendResponse(res, { message: "Version updated", data: await downloadService.updateVersion(req.params.id, (req as any).validatedData) });
@@ -89,7 +90,7 @@ router.patch(
 
 router.delete(
   "/admin/versions/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("catalog:write"),
   validateRequest({ params: idParamSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     await downloadService.deleteVersion(req.params.id);

@@ -1,6 +1,7 @@
 import { Request, Response, Router } from "express";
 import { z } from "zod";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendResponse } from "../../utils/sendResponse";
 import { validateRequest } from "../../utils/validateRequest";
@@ -54,7 +55,7 @@ router.post(
 
 router.get(
   "/admin/subscriptions",
-  authenticateAdminAndCheckStatus,
+  authorize("support"),
   validateRequest({ query: adminQuerySchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { subscriptions, pagination } = await subscriptionService.adminList((req as any).validatedQuery);

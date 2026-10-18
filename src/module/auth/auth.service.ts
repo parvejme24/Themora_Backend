@@ -31,6 +31,7 @@ import {
 } from "../../utils/secureToken";
 
 const googleClient = new OAuth2Client();
+import { twoFactorService } from "../two-factor/two-factor.service";
 
 class AuthService {
   // Generate NextAuth secret
@@ -216,6 +217,15 @@ class AuthService {
         };
       }
 
+      // Two-factor accounts get a short-lived challenge instead of a session
+      if (user.twoFactorEnabled) {
+        return {
+          success: true,
+          message: "Enter the code from your authenticator app",
+          data: { twoFactorRequired: true, challengeToken: await twoFactorService.createChallenge(user.id) } as any,
+        };
+      }
+
       // Use clientToken if provided, else generate one
       const nextAuthSecret = data.clientToken || this.generateNextAuthSecret();
       const sessionExpiration = this.generateSessionExpiration();
@@ -274,6 +284,14 @@ class AuthService {
       }
 
       const email = payload.email.trim().toLowerCase();
+      const twoFactorUser = await prisma.user.findFirst({ where: { email, twoFactorEnabled: true }, select: { id: true } });
+      if (twoFactorUser) {
+        return {
+          success: true,
+          message: "Enter the code from your authenticator app",
+          data: { twoFactorRequired: true, challengeToken: await twoFactorService.createChallenge(twoFactorUser.id) } as any,
+        };
+      }
       const token = data.clientToken || this.generateNextAuthSecret();
       const sessionExpiration = this.generateSessionExpiration();
       const session = {
@@ -792,7 +810,7 @@ class AuthService {
       ]);
 
       return {
-        users,
+        users: users.map((user) => toSafeUser(user)),
         pagination: {
           page,
           limit,

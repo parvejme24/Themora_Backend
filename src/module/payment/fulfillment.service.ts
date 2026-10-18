@@ -4,6 +4,8 @@ import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
 import { couponService } from "../coupon/coupon.service";
 import { affiliateService } from "../affiliate/affiliate.service";
+import { notificationService } from "../notification/notification.service";
+import { analyticsService } from "../analytics/analytics.service";
 
 export const generateLicenseKey = () =>
   ["THMR", ...Array.from({ length: 3 }, () => crypto.randomBytes(2).toString("hex").toUpperCase())].join("-");
@@ -99,6 +101,7 @@ export class FulfillmentService {
           });
           licenseIds.push(license.id);
           await tx.template.update({ where: { id: item.productId }, data: { totalPurchase: { increment: 1 } } });
+          await analyticsService.recordSale(tx, item.productId, item.total);
         }
 
         if (item.pricingPlanId) {
@@ -128,6 +131,16 @@ export class FulfillmentService {
 
       await couponService.redeem(tx, { ...order, userId });
       await affiliateService.createReferral(tx, order);
+      await notificationService.notify(
+        userId,
+        {
+          type: "order_completed",
+          title: `Order ${order.orderNumber} is complete`,
+          body: order.items.map((item) => item.title).join(", ").slice(0, 300),
+          link: "/dashboard/purchases",
+        },
+        tx
+      );
 
       // Bought items leave the buyer's cart
       const boughtProductIds = order.items.flatMap((item) => (item.productId ? [item.productId] : []));
