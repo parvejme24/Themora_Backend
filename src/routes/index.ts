@@ -12,6 +12,9 @@ import pricingRoutes from "../module/pricing/pricing.route";
 import paymentRoutes from "../module/payment/payment.route";
 import webhookRoutes from "../module/webhook/webhook.route";
 import dashboardRoutes from "../module/dashboard/dashboard.route";
+import productRoutes from "../module/product/product.route";
+import productReviewRoutes from "../module/product-review/product-review.route";
+import wishlistRoutes from "../module/wishlist/wishlist.route";
 
 const router = Router();
 const apiV1Router = Router();
@@ -37,8 +40,13 @@ apiV1Router.use(blogReviewRoutes);
 // Template category routes
 apiV1Router.use(templateCategoryRoutes);
 
-// Template routes
+// Template routes (legacy, used by the current frontend)
 apiV1Router.use(templateRoutes);
+
+// Marketplace product, review and wishlist routes
+apiV1Router.use(productRoutes);
+apiV1Router.use(productReviewRoutes);
+apiV1Router.use(wishlistRoutes);
 
 // Order routes
 apiV1Router.use(orderRoutes);

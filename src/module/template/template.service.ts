@@ -1,4 +1,5 @@
 import { prisma } from "../../config/database";
+import { uniqueProductSlug } from "../../utils/slug";
 import { ITemplateService } from "./template.interface";
 import { CreateTemplateInput, UpdateTemplateInput, Template, PaginatedTemplates, TemplateStats, TemplateQuery } from "./template.type";
 
@@ -91,6 +92,8 @@ export class TemplateService implements ITemplateService {
     const template = await prisma.template.create({
       data: {
         ...data,
+        slug: await uniqueProductSlug(data.title),
+        publishedAt: new Date(),
         screenshots: data.screenshots || [],
         sourceFiles: data.sourceFiles || [],
         description: data.description || [],

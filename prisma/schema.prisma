@@ -8,39 +8,43 @@ datasource db {
 }
 
 model User {
-  id                      String            @id @default(uuid())
+  id                      String               @id @default(uuid())
   fullName                String
-  email                   String            @unique
+  email                   String               @unique
   password                String?
-  role                    UserRole          @default(USER)
-  isBanned                Boolean           @default(false)
-  isTrashed               Boolean           @default(false)
-  isDeletedPermanently    Boolean           @default(false)
+  role                    UserRole             @default(USER)
+  isBanned                Boolean              @default(false)
+  isTrashed               Boolean              @default(false)
+  isDeletedPermanently    Boolean              @default(false)
   otpCode                 String?
   otpPurpose              OtpPurpose?
   otpExpiresAt            DateTime?
-  otpVerified             Boolean           @default(false)
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
-  isLoggedIn              Boolean           @default(false)
+  otpVerified             Boolean              @default(false)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  isLoggedIn              Boolean              @default(false)
   lastLoginAt             DateTime?
   nextAuthExpiresAt       DateTime?
   nextAuthSecret          String?
   provider                String?
   providerId              String?
   profile                 UserProfile?
-  blogLikes               BlogLike[]        @relation("UserLikes")
-  blogReactions           BlogReaction[]    @relation("UserReactions")
-  adminReplies            BlogReviewReply[] @relation("AdminReplies")
-  blogReviews             BlogReview[]      @relation("UserReviews")
-  blogs                   Blog[]            @relation("BlogAuthor")
-  contactReplies          ContactReply[]    @relation("UserContactReplies")
-  contacts                Contact[]         @relation("UserContacts")
+  blogLikes               BlogLike[]           @relation("UserLikes")
+  blogReactions           BlogReaction[]       @relation("UserReactions")
+  adminReplies            BlogReviewReply[]    @relation("AdminReplies")
+  blogReviews             BlogReview[]         @relation("UserReviews")
+  blogs                   Blog[]               @relation("BlogAuthor")
+  contactReplies          ContactReply[]       @relation("UserContactReplies")
+  contacts                Contact[]            @relation("UserContacts")
   licenses                License[]
-  newsletterSubscriptions Newsletter[]      @relation("UserNewsletterSubscriptions")
+  newsletterSubscriptions Newsletter[]         @relation("UserNewsletterSubscriptions")
   orders                  OrderInvoice[]
   planEntitlements        PlanEntitlement[]
-  purchasedTemplates      Template[]        @relation("UserPurchases")
+  purchasedTemplates      Template[]           @relation("UserPurchases")
+  sellerProducts          Template[]           @relation("SellerProducts")
+  productReviews          ProductReview[]      @relation("UserProductReviews")
+  productReviewReplies    ProductReviewReply[] @relation("UserProductReviewReplies")
+  wishlist                WishlistItem[]       @relation("UserWishlist")
 
   @@index([email])
   @@index([role])
@@ -103,32 +107,116 @@ model Template {
   updatedAt             DateTime         @updatedAt
   checkoutUrl           String?
   categoryName          String?
+  slug                  String           @unique
+  productType           ProductType      @default(WEBSITE_TEMPLATE)
+  status                ProductStatus    @default(PUBLISHED)
+  techStack             String[]         @default([])
+  platforms             String[]         @default([])
+  isFree                Boolean          @default(false)
+  isFeatured            Boolean          @default(false)
+  salePrice             Float?
+  extendedPrice         Float?
+  apkUrl                String?
+  testflightUrl         String?
+  playStoreUrl          String?
+  appStoreUrl           String?
+  videoUrl              String?
+  figmaUrl              String?
+  fileSize              String?
+  avgRating             Float            @default(0)
+  reviewCount           Int              @default(0)
+  viewCount             Int              @default(0)
+  sellerId              String?
+  publishedAt           DateTime?
   licenses              License[]        @relation("TemplateLicenses")
   links                 Link[]           @relation("TemplateLinks")
   orders                OrderInvoice[]   @relation("TemplateOrders")
   category              TemplateCategory @relation("CategoryTemplates", fields: [categoryId], references: [id])
   purchasedBy           User[]           @relation("UserPurchases")
+  seller                User?            @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: SetNull)
+  tags                  Tag[]            @relation("ProductTags")
+  reviews               ProductReview[]
+  wishlistedBy          WishlistItem[]
 
   @@index([categoryId])
   @@index([createdAt])
+  @@index([status, productType])
+  @@index([isFeatured])
+  @@index([sellerId])
   @@map("templates")
 }
 
+model Tag {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  slug      String     @unique
+  createdAt DateTime   @default(now())
+  products  Template[] @relation("ProductTags")
+
+  @@map("tags")
+}
+
+model ProductReview {
+  id              String               @id @default(uuid())
+  productId       String
+  userId          String
+  rating          Int
+  title           String?
+  body            String
+  isVerifiedBuyer Boolean              @default(false)
+  status          ReviewStatus         @default(APPROVED)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  product         Template             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user            User                 @relation("UserProductReviews", fields: [userId], references: [id], onDelete: Cascade)
+  replies         ProductReviewReply[]
+
+  @@unique([productId, userId])
+  @@index([productId, status])
+  @@map("product_reviews")
+}
+
+model ProductReviewReply {
+  id        String        @id @default(uuid())
+  reviewId  String
+  userId    String
+  body      String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  review    ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User          @relation("UserProductReviewReplies", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("product_review_replies")
+}
+
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation("UserWishlist", fields: [userId], references: [id], onDelete: Cascade)
+  product   Template @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
 model PricingPlan {
-  id                    String           @id @default(uuid())
-  slug                  String           @unique
+  id                    String            @id @default(uuid())
+  slug                  String            @unique
   title                 String
   description           String
   price                 Float
-  currency              String           @default("USD")
-  recommended           Boolean          @default(false)
+  currency              String            @default("USD")
+  recommended           Boolean           @default(false)
   features              String[]
   websiteLimit          Int?
-  lemonsqueezyVariantId String?          @unique
-  isActive              Boolean          @default(true)
-  sortOrder             Int              @default(0)
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  lemonsqueezyVariantId String?           @unique
+  isActive              Boolean           @default(true)
+  sortOrder             Int               @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
   orders                OrderInvoice[]
   entitlements          PlanEntitlement[]
 
@@ -145,8 +233,8 @@ model PlanEntitlement {
   websitesAllowed  Int?
   supportExpiresAt DateTime?
   isActive         Boolean      @default(true)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   pricingPlan      PricingPlan  @relation(fields: [pricingPlanId], references: [id], onDelete: Restrict)
   order            OrderInvoice @relation(fields: [orderId], references: [id], onDelete: Cascade)
   user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -172,15 +260,15 @@ model Link {
 }
 
 model OrderInvoice {
-  id                    String      @id @default(uuid())
+  id                    String           @id @default(uuid())
   userId                String?
   templateId            String?
   pricingPlanId         String?
-  lemonsqueezyOrderId   String      @unique
+  lemonsqueezyOrderId   String           @unique
   lemonsqueezyInvoiceId String?
-  status                OrderStatus @default(PENDING)
+  status                OrderStatus      @default(PENDING)
   totalAmount           Float
-  currency              String      @default("USD")
+  currency              String           @default("USD")
   licenseType           LicenseType
   paymentMethod         String?
   customerEmail         String
@@ -188,13 +276,13 @@ model OrderInvoice {
   billingAddress        Json?
   downloadLinks         String[]
   expiresAt             DateTime?
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
   licenses              License[]
   planEntitlement       PlanEntitlement?
-  template              Template?     @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
-  pricingPlan           PricingPlan?  @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
-  user                  User?       @relation(fields: [userId], references: [id])
+  template              Template?        @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
+  pricingPlan           PricingPlan?     @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
+  user                  User?            @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([templateId])
@@ -413,6 +501,28 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
   REFUNDED
+}
+
+enum ProductType {
+  WEBSITE_TEMPLATE
+  MOBILE_APP
+  UI_KIT
+  ADMIN_DASHBOARD
+  FIGMA_DESIGN
+  PLUGIN
+  FULL_SOURCE_CODE
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  HIDDEN
 }
 
 enum LicenseType {

@@ -3,6 +3,9 @@ import { env } from './env';
 
 const prisma = new PrismaClient({
   log: ['warn', 'error'],
+  // Neon is remote; the 5s default is too tight for multi-query transactions
+  // on a cold or distant connection
+  transactionOptions: { maxWait: 10_000, timeout: 20_000 },
 });
 
 export const connectDatabase = async (): Promise<void> => {

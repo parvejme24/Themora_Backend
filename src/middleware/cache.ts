@@ -21,8 +21,8 @@ export const clearCache = (prefix?: string) => {
 
 export const cacheResponse = (ttlSeconds: number = 30) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Only cache GET requests
-    if (req.method !== "GET") {
+    // Only cache GET requests; never cache in tests, where data changes between requests
+    if (req.method !== "GET" || process.env.NODE_ENV === "test") {
       return next();
     }
 
