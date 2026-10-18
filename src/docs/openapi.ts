@@ -14,6 +14,7 @@ import {
   updateProductSchema,
 } from "../module/product/product.validation";
 import { approveSchema, rejectSchema, requestSchema } from "../module/refund/refund.route";
+import { applySchema, clickSchema } from "../module/affiliate/affiliate.route";
 
 type Access = "public" | "user" | "admin";
 
@@ -85,6 +86,16 @@ const endpoints: Endpoint[] = [
   { method: "post", path: "/licenses/verify", tag: "Licences", summary: "Check a licence key", access: "public", body: verifySchema },
   { method: "post", path: "/licenses/activate", tag: "Licences", summary: "Activate a licence on a domain", access: "public", body: activationSchema },
   { method: "post", path: "/licenses/deactivate", tag: "Licences", summary: "Release a domain", access: "public", body: activationSchema },
+
+  // Affiliates
+  { method: "post", path: "/affiliates/click", tag: "Affiliates", summary: "Record a ?ref= visit", access: "public", body: clickSchema },
+  { method: "post", path: "/me/affiliate", tag: "Affiliates", summary: "Join the affiliate program", access: "user", body: applySchema },
+  { method: "get", path: "/me/affiliate", tag: "Affiliates", summary: "Affiliate dashboard: code, clicks, conversions, balances", access: "user" },
+  { method: "get", path: "/me/affiliate/referrals", tag: "Affiliates", summary: "Commissions earned", access: "user" },
+  { method: "post", path: "/me/affiliate/payouts", tag: "Affiliates", summary: "Request a payout of approved commission", access: "user" },
+  { method: "get", path: "/admin/affiliates", tag: "Admin", summary: "Affiliates with stats", access: "admin" },
+  { method: "get", path: "/admin/affiliate-payouts", tag: "Admin", summary: "Payout requests", access: "admin" },
+  { method: "post", path: "/admin/affiliate-payouts/{id}/pay", tag: "Admin", summary: "Mark a payout paid (with transfer reference)", access: "admin" },
 
   // Admin
   { method: "get", path: "/admin/products", tag: "Admin", summary: "All products including drafts", access: "admin", query: adminProductQuerySchema },

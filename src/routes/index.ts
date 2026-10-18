@@ -21,6 +21,7 @@ import downloadRoutes from "../module/download/download.route";
 import licenseRoutes from "../module/license/license.route";
 import refundRoutes from "../module/refund/refund.route";
 import cronRoutes from "../module/cron/cron.route";
+import affiliateRoutes from "../module/affiliate/affiliate.route";
 
 const router = Router();
 const apiV1Router = Router();
@@ -63,6 +64,9 @@ apiV1Router.use(subscriptionRoutes);
 apiV1Router.use(downloadRoutes);
 apiV1Router.use(licenseRoutes);
 apiV1Router.use(refundRoutes);
+
+// Affiliate program
+apiV1Router.use(affiliateRoutes);
 
 // Scheduled jobs (Vercel Cron)
 apiV1Router.use(cronRoutes);

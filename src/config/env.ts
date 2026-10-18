@@ -33,6 +33,10 @@ const envSchema = z.object({
   REFUND_WINDOW_DAYS: z.coerce.number().int().min(0).default(14),
   // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"
   CRON_SECRET: z.string().default(""),
+  // Affiliate program
+  AFFILIATE_COMMISSION_RATE: z.coerce.number().min(0).max(0.9).default(0.2),
+  AFFILIATE_MIN_PAYOUT: z.coerce.number().min(0).default(50),
+  AFFILIATE_AUTO_APPROVE: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
   SENTRY_DSN: z.string().default(""),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   VERCEL: z.string().optional(),

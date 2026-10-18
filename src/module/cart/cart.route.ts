@@ -11,7 +11,11 @@ export const cartItemSchema = z.object({ productId: z.string().uuid("Invalid pro
 const productParamSchema = z.object({ productId: z.string().uuid("Invalid product ID") });
 export const mergeSchema = z.object({ items: z.array(cartItemSchema).max(50) });
 export const couponSchema = z.object({ code: z.string().trim().min(1).max(30) });
-export const checkoutSchema = z.object({ gateway: z.enum(["stripe", "sslcommerz"]), phone: z.string().trim().max(20).optional() });
+export const checkoutSchema = z.object({
+  gateway: z.enum(["stripe", "sslcommerz"]),
+  phone: z.string().trim().max(20).optional(),
+  referralCode: z.string().trim().min(1).max(30).optional(),
+});
 
 const userOf = (req: Request) => (req as any).user as { id: string; email: string; fullName: string };
 
@@ -87,8 +91,8 @@ router.post(
   "/me/cart/checkout",
   validateRequest({ body: checkoutSchema }),
   asyncHandler(async (req: Request, res: Response) => {
-    const { gateway, phone } = (req as any).validatedData;
-    const result = await cartService.checkout(userOf(req), gateway, phone);
+    const { gateway, phone, referralCode } = (req as any).validatedData;
+    const result = await cartService.checkout(userOf(req), gateway, phone, referralCode);
     sendResponse(res, { statusCode: 201, message: "Checkout created", data: result });
   })
 );

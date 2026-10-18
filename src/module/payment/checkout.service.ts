@@ -4,6 +4,7 @@ import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
 import { activeSalePrice } from "../../utils/pricing";
 import { couponService } from "../coupon/coupon.service";
+import { affiliateService } from "../affiliate/affiliate.service";
 import { fulfillmentService } from "./fulfillment.service";
 import { GatewaySession } from "./gateways/gateway.types";
 import { sslcommerzGateway } from "./gateways/sslcommerz.gateway";
@@ -153,6 +154,7 @@ export class CheckoutService {
     if (quote.isSubscription && !user) throw AppError.unauthorized("Please sign in to subscribe");
 
     const { items, subtotal, discountTotal, totalAmount, coupon } = quote;
+    const affiliateId = await affiliateService.resolveForCheckout(input.referralCode, { userId: user?.id, email });
     const provider: PaymentProvider = totalAmount === 0 ? "FREE" : input.gateway === "sslcommerz" ? "SSLCOMMERZ" : "STRIPE";
     const productItems = items.filter((item) => item.productId);
     const planItems = items.filter((item) => item.pricingPlanId);
@@ -174,6 +176,7 @@ export class CheckoutService {
         paymentMethod: gatewayLabels[provider],
         couponId: coupon?.id ?? null,
         couponCode: coupon?.code ?? null,
+        affiliateId,
         customerEmail: email,
         customerName: name,
         billingAddress: { email, name, ...(input.customer.phone ? { phone: input.customer.phone } : {}) },
@@ -303,6 +306,7 @@ export class CheckoutService {
             : { productId: input.productId, licenseType: "SINGLE" },
         ],
         gateway: input.gateway === "sslcommerz" ? "sslcommerz" : "stripe",
+        referralCode: input.referralCode,
         customer: { email: input.customerEmail, name: input.customerName },
       },
       user

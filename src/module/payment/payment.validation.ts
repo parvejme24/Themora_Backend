@@ -18,6 +18,7 @@ export const checkoutSchema = z.object({
   items: z.array(checkoutItemSchema).min(1, "Your cart is empty").max(20),
   gateway: z.enum(["stripe", "sslcommerz"]),
   couponCode: z.string().trim().min(1).max(30).optional(),
+  referralCode: z.string().trim().min(1).max(30).optional(),
   customer: customerSchema.default({}),
 });
 
@@ -28,6 +29,7 @@ export const legacyCheckoutSchema = z.object({
   customerEmail: z.string().trim().toLowerCase().email().optional(),
   customerName: z.string().trim().min(2).max(120).optional(),
   gateway: z.string().optional(),
+  referralCode: z.string().trim().min(1).max(30).optional(),
 });
 
 export const stripeConfirmSchema = z.object({ sessionId: z.string().min(10).max(255) });

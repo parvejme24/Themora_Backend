@@ -3,6 +3,7 @@ import { BillingInterval, OrderStatus, PaymentProvider, Prisma } from "@prisma/c
 import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
 import { couponService } from "../coupon/coupon.service";
+import { affiliateService } from "../affiliate/affiliate.service";
 
 export const generateLicenseKey = () =>
   ["THMR", ...Array.from({ length: 3 }, () => crypto.randomBytes(2).toString("hex").toUpperCase())].join("-");
@@ -126,6 +127,7 @@ export class FulfillmentService {
       }
 
       await couponService.redeem(tx, { ...order, userId });
+      await affiliateService.createReferral(tx, order);
 
       // Bought items leave the buyer's cart
       const boughtProductIds = order.items.flatMap((item) => (item.productId ? [item.productId] : []));
@@ -221,6 +223,7 @@ export class FulfillmentService {
       prisma.license.updateMany({ where: { orderId }, data: { isActive: false } }),
       prisma.planEntitlement.updateMany({ where: { orderId }, data: { isActive: false } }),
     ]);
+    await affiliateService.reverseForOrder(orderId);
     return true;
   }
 

@@ -52,6 +52,7 @@ model User {
   downloadLogs            DownloadLog[]
   refundRequests          RefundRequest[]      @relation("RefundRequester")
   resolvedRefunds         RefundRequest[]      @relation("RefundResolver")
+  affiliate               Affiliate?
 
   @@index([email])
   @@index([role])
@@ -290,6 +291,7 @@ model OrderInvoice {
   couponId          String?
   couponCode        String?
   subscriptionId    String?
+  affiliateId       String?
   currency          String            @default("USD")
   licenseType       LicenseType
   paymentMethod     String?
@@ -302,6 +304,8 @@ model OrderInvoice {
   updatedAt         DateTime          @updatedAt
   licenses          License[]
   items             OrderItem[]
+  affiliate         Affiliate?        @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+  referral          Referral?
   refundRequests    RefundRequest[]
   couponRedemption  CouponRedemption?
   coupon            Coupon?           @relation(fields: [couponId], references: [id], onDelete: SetNull)
@@ -548,6 +552,81 @@ model RefundRequest {
   @@map("refund_requests")
 }
 
+model Affiliate {
+  id             String            @id @default(uuid())
+  userId         String            @unique
+  code           String            @unique
+  status         AffiliateStatus   @default(PENDING)
+  commissionRate Float
+  payoutMethod   String
+  payoutDetails  String
+  website        String?
+  approvedAt     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks         AffiliateClick[]
+  referrals      Referral[]
+  payouts        AffiliatePayout[]
+  orders         OrderInvoice[]
+
+  @@index([status])
+  @@map("affiliates")
+}
+
+model AffiliateClick {
+  id          String    @id @default(uuid())
+  affiliateId String
+  visitorHash String
+  landingPath String?
+  referrer    String?
+  createdAt   DateTime  @default(now())
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId, createdAt])
+  @@index([affiliateId, visitorHash])
+  @@map("affiliate_clicks")
+}
+
+model Referral {
+  id           String           @id @default(uuid())
+  affiliateId  String
+  orderId      String           @unique
+  orderAmount  Float
+  commission   Float
+  status       ReferralStatus   @default(PENDING)
+  approvableAt DateTime
+  payoutId     String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  affiliate    Affiliate        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  order        OrderInvoice     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payout       AffiliatePayout? @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateId, status])
+  @@index([status, approvableAt])
+  @@map("referrals")
+}
+
+model AffiliatePayout {
+  id          String       @id @default(uuid())
+  affiliateId String
+  amount      Float
+  method      String
+  details     String
+  status      PayoutStatus @default(REQUESTED)
+  reference   String?
+  note        String?
+  paidAt      DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  affiliate   Affiliate    @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  referrals   Referral[]
+
+  @@index([status])
+  @@map("affiliate_payouts")
+}
+
 model WebhookEvent {
   id          String          @id @default(uuid())
   provider    PaymentProvider
@@ -769,6 +848,25 @@ enum RefundRequestStatus {
   REFUNDED
   REJECTED
   FAILED
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum ReferralStatus {
+  PENDING
+  APPROVED
+  PAID
+  REVERSED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PAID
+  REJECTED
 }
 
 enum PaymentProvider {

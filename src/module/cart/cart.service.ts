@@ -128,7 +128,7 @@ export class CartService {
     return this.get(user);
   }
 
-  async checkout(user: CartUser, gateway: "stripe" | "sslcommerz", phone?: string) {
+  async checkout(user: CartUser, gateway: "stripe" | "sslcommerz", phone?: string, referralCode?: string) {
     const cart = await this.get(user);
     if (cart.items.length === 0) throw AppError.badRequest("Your cart is empty");
     if (cart.couponError) throw AppError.badRequest(`Your coupon can no longer be used: ${cart.couponError}`);
@@ -137,6 +137,7 @@ export class CartService {
         items: cart.items.map((item) => ({ productId: item.productId, licenseType: item.licenseType })),
         gateway,
         couponCode: cart.couponCode ?? undefined,
+        referralCode,
         customer: { phone },
       },
       user

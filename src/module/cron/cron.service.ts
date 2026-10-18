@@ -1,5 +1,6 @@
 import { prisma } from "../../config/database";
 import { captureError } from "../../config/monitoring";
+import { affiliateService } from "../affiliate/affiliate.service";
 import { activeSalePrice } from "../../utils/pricing";
 import { sendAbandonedCartEmail, sendSubscriptionReminderEmail } from "../../utils/email";
 
@@ -134,6 +135,7 @@ export class CronService {
       staleOrders: () => this.cancelStaleOrders(),
       expiredSales: () => this.clearExpiredSales(),
       webhookEvents: () => this.pruneWebhookEvents(),
+      affiliateCommissions: () => affiliateService.approveMatured(),
     };
     const results: Record<string, unknown> = {};
     // One failing job must not stop the others

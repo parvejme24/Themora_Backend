@@ -455,6 +455,64 @@ async function seedVersions() {
   console.log(`🗂  Created ${created} product versions (files point to the private demo package)`);
 }
 
+// A demo affiliate with clicks, commissions in every state and a paid payout
+async function seedAffiliate() {
+  const user = await prisma.user.findUnique({ where: { email: `ayesha.rahman@${DEMO_DOMAIN}` }, select: { id: true } });
+  if (!user) return;
+  const affiliate = await prisma.affiliate.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, code: "AYESHA20", status: "ACTIVE", commissionRate: 0.2, payoutMethod: "bkash", payoutDetails: "01700000000", website: "https://ayesha.dev", approvedAt: daysAgo(200) },
+    update: {},
+  });
+  if ((await prisma.referral.count({ where: { affiliateId: affiliate.id } })) > 0) return;
+
+  await prisma.affiliateClick.createMany({
+    data: Array.from({ length: 180 }, (_, i) => ({
+      affiliateId: affiliate.id,
+      visitorHash: `seed-visitor-${i}`,
+      landingPath: pick(["/", "/products/nimbus-nextjs-saas-starter", "/products/fooddash-flutter-food-delivery", "/pricing"]),
+      referrer: pick(["https://ayesha.dev/blog/best-nextjs-templates", "https://twitter.com", "https://youtube.com"]),
+      createdAt: daysAgo(Math.floor(random() * 120)),
+    })),
+  });
+
+  // Credit some existing demo orders bought by other demo buyers
+  const orders = await prisma.orderInvoice.findMany({
+    where: { orderNumber: { startsWith: SEED_ORDER_PREFIX }, status: "COMPLETED", NOT: { userId: user.id } },
+    orderBy: { createdAt: "asc" },
+    take: 14,
+    select: { id: true, totalAmount: true, createdAt: true },
+  });
+  const paidOut = orders.slice(0, 6);
+  const payout = await prisma.affiliatePayout.create({
+    data: {
+      affiliateId: affiliate.id,
+      amount: Math.round(paidOut.reduce((sum, order) => sum + order.totalAmount * 0.2, 0) * 100) / 100,
+      method: "bkash",
+      details: "01700000000",
+      status: "PAID",
+      reference: "bKash TX DEMO8N7A6K",
+      paidAt: daysAgo(20),
+    },
+  });
+  for (const [index, order] of orders.entries()) {
+    const status = index < 6 ? "PAID" : index < 11 ? "APPROVED" : "PENDING";
+    await prisma.orderInvoice.update({ where: { id: order.id }, data: { affiliateId: affiliate.id } });
+    await prisma.referral.create({
+      data: {
+        affiliateId: affiliate.id,
+        orderId: order.id,
+        orderAmount: order.totalAmount,
+        commission: Math.round(order.totalAmount * 20) / 100,
+        status,
+        approvableAt: status === "PENDING" ? daysAgo(-10) : new Date(order.createdAt.getTime() + 14 * 86_400_000),
+        payoutId: status === "PAID" ? payout.id : null,
+      },
+    });
+  }
+  console.log(`🤝 Demo affiliate AYESHA20 with 180 clicks and ${orders.length} commissions`);
+}
+
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "");
   console.log(`🎯 Target: ${url.hostname} (schema: ${url.searchParams.get("schema") ?? "public"})`);
@@ -468,6 +526,7 @@ async function main() {
     await seedOrdersAndReviews(users);
     await seedCommerce();
     await seedVersions();
+    await seedAffiliate();
     console.log("✅ Marketplace seed complete");
   }
   console.log(`⏱  ${Math.round((Date.now() - startedAt) / 1000)}s`);
