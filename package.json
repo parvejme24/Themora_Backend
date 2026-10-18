@@ -8,12 +8,14 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "dev:build": "tsc && npm run start",
-    "seed:demo": "ts-node tests/seed-demo.ts",
-    "promote:demo-admin": "ts-node tests/promote-demo-admin.ts",
+    "seed:demo": "ts-node scripts/seed-demo.ts",
+    "promote:demo-admin": "ts-node scripts/promote-demo-admin.ts",
     "clean": "rimraf dist",
     "vercel-build": "prisma generate && tsc",
     "postinstall": "prisma generate",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -44,10 +46,13 @@
     "@types/express": "^5.0.3",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.6.2",
+    "@types/supertest": "^7.2.1",
     "nodemon": "^3.1.10",
     "prisma": "^5.0.0",
     "rimraf": "^5.0.0",
+    "supertest": "^7.3.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
   }
 }

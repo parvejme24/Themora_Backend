@@ -5,6 +5,8 @@ import rateLimit from "express-rate-limit";
 import { xss } from "express-xss-sanitizer";
 import morgan from "morgan";
 import { env } from "./config/env";
+import { prisma } from "./config/database";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -12,13 +14,15 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Logging middleware
-app.use(morgan("dev"));
+if (env.NODE_ENV !== "test") {
+  app.use(morgan("dev"));
 
-// Custom request logging
-app.use((req, res, next) => {
-  console.log(`📝 ${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
+  // Custom request logging
+  app.use((req, res, next) => {
+    console.log(`📝 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
+}
 
 // Security middleware
 app.use(helmet());
@@ -109,33 +113,17 @@ app.get("/", (req, res) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Route not found",
-    message: `Cannot ${req.method} ${req.originalUrl}`,
-    timestamp: new Date().toISOString(),
-  });
+// Health check for uptime monitoring
+app.get("/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ success: true, status: "ok", database: "up", timestamp: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ success: false, status: "degraded", database: "down", timestamp: new Date().toISOString() });
+  }
 });
 
-// Error handling middleware
-app.use(
-  (
-    err: Error,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction
-  ) => {
-    console.error("Error:", err.stack);
-    res.status(500).json({
-      error: "Internal Server Error",
-      message:
-        env.NODE_ENV === "development"
-          ? err.message
-          : "Something went wrong!",
-      timestamp: new Date().toISOString(),
-    });
-  }
-);
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

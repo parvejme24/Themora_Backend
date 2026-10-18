@@ -1,0 +1,1 @@
+-- No-op: entitlement tables are included in the 0_init baseline.

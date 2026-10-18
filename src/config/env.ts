@@ -27,4 +27,8 @@ const envSchema = z.object({
 export const env = envSchema.parse({
   ...process.env,
   PORT: process.env.PORT ?? process.env.SERVER_RUNNING_PORT,
+  // Accept the misspelled CLAUDINARY_* keys some .env files use
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ?? process.env.CLAUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ?? process.env.CLAUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ?? process.env.CLAUDINARY_API_SECRET,
 });
