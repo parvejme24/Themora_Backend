@@ -15,18 +15,30 @@ const getClient = () => {
 const toCents = (amount: number) => Math.round(amount * 100);
 
 export const stripeGateway = {
-  async createSession(order: GatewayOrder, customer: GatewayCustomer): Promise<GatewaySession> {
+  async createSession(
+    order: GatewayOrder,
+    customer: GatewayCustomer,
+    options: { recurring?: "month" | "year"; userId?: string; planId?: string } = {}
+  ): Promise<GatewaySession> {
     const urls = checkoutReturnUrls(order.id);
+    const metadata = { orderId: order.id, orderNumber: order.orderNumber };
     const session = await getClient().checkout.sessions.create({
-      mode: "payment",
+      mode: options.recurring ? "subscription" : "payment",
       customer_email: customer.email,
       client_reference_id: order.id,
       line_items: order.items.map((item) => ({
         quantity: 1,
-        price_data: { currency: "usd", unit_amount: toCents(item.total), product_data: { name: item.title } },
+        price_data: {
+          currency: "usd",
+          unit_amount: toCents(item.total),
+          product_data: { name: item.title },
+          ...(options.recurring ? { recurring: { interval: options.recurring } } : {}),
+        },
       })),
-      metadata: { orderId: order.id, orderNumber: order.orderNumber },
-      payment_intent_data: { metadata: { orderId: order.id, orderNumber: order.orderNumber } },
+      metadata,
+      ...(options.recurring
+        ? { subscription_data: { metadata: { ...metadata, userId: options.userId ?? "", planId: options.planId ?? "" } } }
+        : { payment_intent_data: { metadata } }),
       success_url: `${urls.success}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: urls.cancelled,
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
@@ -43,6 +55,15 @@ export const stripeGateway = {
   constructEvent(rawBody: Buffer, signature: string): Stripe.Event {
     if (!env.STRIPE_WEBHOOK_SECRET) throw new AppError(503, "Stripe webhooks are not configured");
     return Stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
+  },
+
+  setCancelAtPeriodEnd(subscriptionId: string, cancel: boolean) {
+    return getClient().subscriptions.update(subscriptionId, { cancel_at_period_end: cancel });
+  },
+
+  async createPortalSession(customerId: string, returnUrl: string) {
+    const session = await getClient().billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+    return session.url;
   },
 
   async refund(paymentIntentId: string) {

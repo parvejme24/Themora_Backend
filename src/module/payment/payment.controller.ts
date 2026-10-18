@@ -9,6 +9,7 @@ import { fulfillmentService } from "./fulfillment.service";
 import { sslcommerzGateway } from "./gateways/sslcommerz.gateway";
 import { stripeGateway } from "./gateways/stripe.gateway";
 import { checkoutReturnUrls } from "./payment.urls";
+import { subscriptionService } from "../subscription/subscription.service";
 
 const checkoutUser = (req: Request) => {
   const user = (req as any).user;
@@ -41,9 +42,13 @@ const fulfillStripeSession = async (session: Stripe.Checkout.Session) => {
   if (session.payment_status !== "paid") return { fulfilled: false, reason: "not_paid" };
   return fulfillmentService.fulfillOrder(orderId, {
     provider: "STRIPE",
-    providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+    providerPaymentId:
+      (typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id) ??
+      (typeof session.invoice === "string" ? session.invoice : session.invoice?.id),
     amount: stripeGateway.fromCents(session.amount_total),
     currency: session.currency ?? "",
+    subscriptionId: typeof session.subscription === "string" ? session.subscription : session.subscription?.id,
+    customerId: typeof session.customer === "string" ? session.customer : session.customer?.id,
   });
 };
 
@@ -70,6 +75,14 @@ const handleStripeEvent = async (event: Stripe.Event) => {
       if (order) await fulfillmentService.markRefunded(order.id);
       return;
     }
+    case "invoice.paid":
+      return subscriptionService.handleInvoicePaid(event.data.object);
+    case "invoice.payment_failed":
+      return subscriptionService.handleInvoicePaymentFailed(event.data.object);
+    case "customer.subscription.updated":
+      return subscriptionService.handleSubscriptionUpdated(event.data.object);
+    case "customer.subscription.deleted":
+      return subscriptionService.handleSubscriptionDeleted(event.data.object);
     default:
       return;
   }

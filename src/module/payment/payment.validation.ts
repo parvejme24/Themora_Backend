@@ -17,6 +17,7 @@ const customerSchema = z.object({
 export const checkoutSchema = z.object({
   items: z.array(checkoutItemSchema).min(1, "Your cart is empty").max(20),
   gateway: z.enum(["stripe", "sslcommerz"]),
+  couponCode: z.string().trim().min(1).max(30).optional(),
   customer: customerSchema.default({}),
 });
 

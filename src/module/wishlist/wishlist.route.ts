@@ -7,6 +7,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { sendResponse } from "../../utils/sendResponse";
 import { validateRequest } from "../../utils/validateRequest";
 import { productCardSelect } from "../product/product.service";
+import { withActiveSale } from "../../utils/pricing";
 
 const productIdSchema = z.object({ productId: z.string().uuid("Invalid product ID") });
 
@@ -20,7 +21,7 @@ const listWishlist = asyncHandler(async (req: Request, res: Response) => {
   });
   sendResponse(res, {
     message: "Wishlist fetched successfully",
-    data: items.map((item) => ({ ...item.product, addedAt: item.createdAt })),
+    data: items.map((item) => ({ ...withActiveSale(item.product), addedAt: item.createdAt })),
   });
 });
 

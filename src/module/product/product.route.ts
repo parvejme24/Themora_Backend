@@ -7,6 +7,8 @@ import {
   adminListProducts,
   createProduct,
   deleteProduct,
+  endSale,
+  startSale,
   getProduct,
   getProductFacets,
   getRelatedProducts,
@@ -17,6 +19,8 @@ import {
 import {
   adminProductQuerySchema,
   createProductSchema,
+  endSaleSchema,
+  saleSchema,
   productIdParamSchema,
   productQuerySchema,
   productSlugParamSchema,
@@ -49,5 +53,8 @@ router.patch(
   updateProduct
 );
 router.delete("/admin/products/:id", authenticateAdminAndCheckStatus, validateRequest({ params: productIdParamSchema }), deleteProduct);
+
+router.post("/admin/sales", authenticateAdminAndCheckStatus, validateRequest({ body: saleSchema }), startSale);
+router.delete("/admin/sales", authenticateAdminAndCheckStatus, validateRequest({ body: endSaleSchema }), endSale);
 
 export default router;

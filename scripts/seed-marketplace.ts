@@ -89,6 +89,13 @@ async function clean() {
   });
   await prisma.tag.deleteMany({ where: { products: { none: {} } } });
   await recountCategories();
+  const coupons = await prisma.coupon.deleteMany({
+    where: { code: { in: [...seedCoupons.map((c) => c.code), seedCouponCategory.code] }, redemptions: { none: {} } },
+  });
+  const plans = await prisma.pricingPlan.deleteMany({
+    where: { slug: { in: seedPlans.map((p) => p.slug) }, orderItems: { none: {} }, subscriptions: { none: {} } },
+  });
+  console.log(`🧹 Removed ${coupons.count} demo coupons and ${plans.count} unused demo plans`);
 
   console.log(
     `🧹 Removed ${orders.count} demo orders, ${users.count} demo buyers (and their reviews), ` +
@@ -314,6 +321,61 @@ async function seedOrdersAndReviews(users: { id: string; email: string; fullName
   console.log(`🧾 Upserted ${orders} completed demo orders and ${reviews} reviews; added ${replies} seller replies`);
 }
 
+const seedPlans = [
+  {
+    slug: "all-access-monthly",
+    title: "All-Access Monthly",
+    description: "Every product in the store, every update, cancel anytime",
+    price: 29,
+    billingInterval: "MONTH" as const,
+    features: ["Download every template, app and UI kit", "All future releases included", "Commercial use licence", "Priority support", "Cancel anytime"],
+    sortOrder: 10,
+  },
+  {
+    slug: "all-access-yearly",
+    title: "All-Access Yearly",
+    description: "Everything in monthly, two months free",
+    price: 249,
+    billingInterval: "YEAR" as const,
+    recommended: true,
+    features: ["Download every template, app and UI kit", "All future releases included", "Commercial use licence", "Priority support", "Two months free"],
+    sortOrder: 11,
+  },
+];
+
+const seedCoupons = [
+  { code: "WELCOME10", description: "10% off your first order", type: "PERCENT" as const, value: 10, firstOrderOnly: true },
+  { code: "BLACKFRIDAY40", description: "Black Friday: 40% off everything", type: "PERCENT" as const, value: 40, maxDiscount: 200, maxUses: 1000, endsAt: new Date("2026-12-01T23:59:59Z") },
+  { code: "SAVE15", description: "$15 off orders over $75", type: "FIXED" as const, value: 15, minSubtotal: 75, perUserLimit: 1 },
+];
+const seedCouponCategory = { code: "FLUTTER20", description: "20% off Flutter apps", type: "PERCENT" as const, value: 20, categorySlug: "flutter" };
+const flashSaleSlugs = ["aurora-ai-startup-landing", "pulse-react-native-fitness", "glyph-mobile-ui-kit", "crmify-sales-crm-dashboard"];
+
+async function seedCommerce() {
+  await inBatches(seedPlans, (plan) =>
+    prisma.pricingPlan.upsert({
+      where: { slug: plan.slug },
+      create: { ...plan, currency: "USD", grantsAllAccess: true, isActive: true },
+      update: { price: plan.price, features: plan.features, billingInterval: plan.billingInterval, grantsAllAccess: true },
+    })
+  );
+
+  const flutter = await prisma.templateCategory.findUnique({ where: { slug: seedCouponCategory.categorySlug }, select: { id: true } });
+  const { categorySlug, ...categoryCoupon } = seedCouponCategory;
+  await inBatches([...seedCoupons, { ...categoryCoupon, categoryIds: flutter ? [flutter.id] : [] }], (coupon) =>
+    prisma.coupon.upsert({ where: { code: coupon.code }, create: coupon, update: {} })
+  );
+
+  // A running flash sale: 30% off a few products for the next 7 days
+  const saleEndsAt = daysAgo(-7);
+  const onSale = await prisma.template.findMany({ where: { slug: { in: flashSaleSlugs } }, select: { id: true, price: true } });
+  await inBatches(onSale, (product) =>
+    prisma.template.update({ where: { id: product.id }, data: { salePrice: Math.round(product.price * 70) / 100, saleEndsAt } })
+  );
+
+  console.log(`🏷  Upserted ${seedPlans.length} all-access plans, ${seedCoupons.length + 1} coupons; ${onSale.length} products on a 7-day flash sale`);
+}
+
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "");
   console.log(`🎯 Target: ${url.hostname} (schema: ${url.searchParams.get("schema") ?? "public"})`);
@@ -325,6 +387,7 @@ async function main() {
     await seedCatalog();
     const users = await seedBuyers();
     await seedOrdersAndReviews(users);
+    await seedCommerce();
     console.log("✅ Marketplace seed complete");
   }
   console.log(`⏱  ${Math.round((Date.now() - startedAt) / 1000)}s`);

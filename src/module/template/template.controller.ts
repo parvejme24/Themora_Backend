@@ -3,20 +3,23 @@ import { prisma } from "../../config/database";
 import { TemplateService } from "./template.service";
 import { OrderService } from "../order/order.service";
 import { userOwnsProduct } from "../product/product.service";
+import { subscriptionService } from "../subscription/subscription.service";
 
 const templateService = new TemplateService();
 const orderService = new OrderService();
 
-// Buyers of the product, or customers with an active all-access plan
+// Buyers of the product, customers with an active one-time plan, or
+// all-access subscribers
 const userHasTemplateAccess = async (userId: string, templateId: string) => {
-  const [owns, planEntitlement] = await Promise.all([
+  const [owns, planEntitlement, allAccess] = await Promise.all([
     userOwnsProduct(userId, templateId),
     prisma.planEntitlement.findFirst({
       where: { userId, isActive: true, order: { status: "COMPLETED" } },
       select: { id: true },
     }),
+    subscriptionService.hasAllAccess(userId),
   ]);
-  return owns || Boolean(planEntitlement);
+  return owns || Boolean(planEntitlement) || allAccess;
 };
 
 // Get all templates

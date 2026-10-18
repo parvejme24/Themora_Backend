@@ -45,6 +45,9 @@ model User {
   productReviews          ProductReview[]      @relation("UserProductReviews")
   productReviewReplies    ProductReviewReply[] @relation("UserProductReviewReplies")
   wishlist                WishlistItem[]       @relation("UserWishlist")
+  cart                    Cart?
+  subscriptions           Subscription[]
+  couponRedemptions       CouponRedemption[]
 
   @@index([email])
   @@index([role])
@@ -111,6 +114,7 @@ model Template {
   isFree           Boolean          @default(false)
   isFeatured       Boolean          @default(false)
   salePrice        Float?
+  saleEndsAt       DateTime?
   extendedPrice    Float?
   apkUrl           String?
   testflightUrl    String?
@@ -134,6 +138,7 @@ model Template {
   reviews          ProductReview[]
   wishlistedBy     WishlistItem[]
   orderItems       OrderItem[]
+  cartItems        CartItem[]
 
   @@index([categoryId])
   @@index([createdAt])
@@ -200,22 +205,25 @@ model WishlistItem {
 }
 
 model PricingPlan {
-  id           String            @id @default(uuid())
-  slug         String            @unique
-  title        String
-  description  String
-  price        Float
-  currency     String            @default("USD")
-  recommended  Boolean           @default(false)
-  features     String[]
-  websiteLimit Int?
-  isActive     Boolean           @default(true)
-  sortOrder    Int               @default(0)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  orders       OrderInvoice[]
-  entitlements PlanEntitlement[]
-  orderItems   OrderItem[]
+  id              String            @id @default(uuid())
+  slug            String            @unique
+  title           String
+  description     String
+  price           Float
+  currency        String            @default("USD")
+  recommended     Boolean           @default(false)
+  features        String[]
+  websiteLimit    Int?
+  isActive        Boolean           @default(true)
+  sortOrder       Int               @default(0)
+  billingInterval BillingInterval   @default(ONE_TIME)
+  grantsAllAccess Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  orders          OrderInvoice[]
+  entitlements    PlanEntitlement[]
+  orderItems      OrderItem[]
+  subscriptions   Subscription[]
 
   @@index([isActive, sortOrder])
   @@map("pricing_plans")
@@ -257,23 +265,26 @@ model Link {
 }
 
 model OrderInvoice {
-  id                String           @id @default(uuid())
+  id                String            @id @default(uuid())
   userId            String?
   templateId        String?
   pricingPlanId     String?
-  orderNumber       String           @unique
-  status            OrderStatus      @default(PENDING)
-  subtotal          Float            @default(0)
-  discountTotal     Float            @default(0)
+  orderNumber       String            @unique
+  status            OrderStatus       @default(PENDING)
+  subtotal          Float             @default(0)
+  discountTotal     Float             @default(0)
   totalAmount       Float
   provider          PaymentProvider?
-  providerSessionId String?          @unique
+  providerSessionId String?           @unique
   providerPaymentId String?
   chargeAmount      Float?
   chargeCurrency    String?
   paidAt            DateTime?
   failureReason     String?
-  currency          String           @default("USD")
+  couponId          String?
+  couponCode        String?
+  subscriptionId    String?
+  currency          String            @default("USD")
   licenseType       LicenseType
   paymentMethod     String?
   customerEmail     String
@@ -281,14 +292,17 @@ model OrderInvoice {
   billingAddress    Json?
   downloadLinks     String[]
   expiresAt         DateTime?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   licenses          License[]
   items             OrderItem[]
+  couponRedemption  CouponRedemption?
+  coupon            Coupon?           @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  subscription      Subscription?     @relation("SubscriptionOrders", fields: [subscriptionId], references: [id], onDelete: SetNull)
   planEntitlement   PlanEntitlement?
-  template          Template?        @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
-  pricingPlan       PricingPlan?     @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
-  user              User?            @relation(fields: [userId], references: [id])
+  template          Template?         @relation("TemplateOrders", fields: [templateId], references: [id], onDelete: SetNull)
+  pricingPlan       PricingPlan?      @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
+  user              User?             @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([templateId])
@@ -346,6 +360,98 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+model Cart {
+  id         String     @id @default(uuid())
+  userId     String     @unique
+  couponCode String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id          String      @id @default(uuid())
+  cartId      String
+  productId   String
+  licenseType LicenseType @default(SINGLE)
+  createdAt   DateTime    @default(now())
+  cart        Cart        @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product     Template    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@map("cart_items")
+}
+
+model Coupon {
+  id             String             @id @default(uuid())
+  code           String             @unique
+  description    String?
+  type           CouponType
+  value          Float
+  minSubtotal    Float?
+  maxDiscount    Float?
+  maxUses        Int?
+  usesCount      Int                @default(0)
+  perUserLimit   Int?
+  firstOrderOnly Boolean            @default(false)
+  productIds     String[]           @default([])
+  categoryIds    String[]           @default([])
+  startsAt       DateTime?
+  endsAt         DateTime?
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  orders         OrderInvoice[]
+  redemptions    CouponRedemption[]
+
+  @@index([isActive])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id        String       @id @default(uuid())
+  couponId  String
+  orderId   String       @unique
+  userId    String?
+  email     String
+  discount  Float
+  createdAt DateTime     @default(now())
+  coupon    Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order     OrderInvoice @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
+  @@index([email])
+  @@map("coupon_redemptions")
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  userId                 String
+  pricingPlanId          String
+  provider               PaymentProvider
+  providerSubscriptionId String?            @unique
+  providerCustomerId     String?
+  status                 SubscriptionStatus @default(ACTIVE)
+  autoRenew              Boolean            @default(false)
+  cancelAtPeriodEnd      Boolean            @default(false)
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  reminderSentAt         DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pricingPlan            PricingPlan        @relation(fields: [pricingPlanId], references: [id], onDelete: Restrict)
+  orders                 OrderInvoice[]     @relation("SubscriptionOrders")
+
+  @@index([userId, status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
 }
 
 model WebhookEvent {
@@ -544,6 +650,24 @@ enum OrderStatus {
   FAILED
   CANCELLED
   REFUNDED
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+enum BillingInterval {
+  ONE_TIME
+  MONTH
+  YEAR
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
 }
 
 enum PaymentProvider {

@@ -1,7 +1,9 @@
 import crypto from "node:crypto";
-import { LicenseType, PaymentProvider } from "@prisma/client";
+import { BillingInterval, Coupon, LicenseType, PaymentProvider } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
+import { activeSalePrice } from "../../utils/pricing";
+import { couponService } from "../coupon/coupon.service";
 import { fulfillmentService } from "./fulfillment.service";
 import { GatewaySession } from "./gateways/gateway.types";
 import { sslcommerzGateway } from "./gateways/sslcommerz.gateway";
@@ -15,14 +17,25 @@ interface CheckoutUser {
   fullName: string;
 }
 
-interface PricedItem {
+export interface PricedItem {
   productId?: string;
   pricingPlanId?: string;
+  categoryId?: string | null;
+  billingInterval?: BillingInterval;
   title: string;
   licenseType: LicenseType;
   unitPrice: number;
   discount: number;
   total: number;
+}
+
+export interface Quote {
+  items: PricedItem[];
+  subtotal: number;
+  discountTotal: number;
+  totalAmount: number;
+  coupon: Coupon | null;
+  isSubscription: boolean;
 }
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
@@ -41,6 +54,9 @@ const gatewayLabels: Record<PaymentProvider, string> = {
   MANUAL: "Manual",
 };
 
+// Order item columns only (drops pricing-only fields)
+const toOrderItem = ({ categoryId, billingInterval, ...item }: PricedItem) => item;
+
 export class CheckoutService {
   // Prices always come from the database, never from the client
   private async priceItems(items: CheckoutInput["items"]): Promise<PricedItem[]> {
@@ -53,9 +69,12 @@ export class CheckoutService {
     const [products, plans] = await Promise.all([
       prisma.template.findMany({
         where: { id: { in: productIds }, status: "PUBLISHED" },
-        select: { id: true, title: true, price: true, salePrice: true, extendedPrice: true, isFree: true },
+        select: { id: true, title: true, price: true, salePrice: true, saleEndsAt: true, extendedPrice: true, isFree: true, categoryId: true },
       }),
-      prisma.pricingPlan.findMany({ where: { id: { in: planIds }, isActive: true }, select: { id: true, title: true, price: true } }),
+      prisma.pricingPlan.findMany({
+        where: { id: { in: planIds }, isActive: true },
+        select: { id: true, title: true, price: true, billingInterval: true },
+      }),
     ]);
     const productById = new Map(products.map((product) => [product.id, product]));
     const planById = new Map(plans.map((plan) => [plan.id, plan]));
@@ -70,11 +89,12 @@ export class CheckoutService {
         else if (item.licenseType === "EXTENDED") {
           if (product.extendedPrice == null) throw AppError.badRequest(`"${product.title}" is not sold with an extended licence`);
           unitPrice = product.extendedPrice;
-        } else unitPrice = product.salePrice ?? product.price;
+        } else unitPrice = activeSalePrice(product) ?? product.price;
 
         const licenseLabel = item.licenseType === "EXTENDED" ? "Extended" : "Single";
         return {
           productId: product.id,
+          categoryId: product.categoryId,
           title: `${product.title} (${licenseLabel} licence)`,
           licenseType: product.isFree ? "SINGLE" : item.licenseType,
           unitPrice: roundMoney(unitPrice),
@@ -85,9 +105,11 @@ export class CheckoutService {
 
       const plan = planById.get(item.planId!);
       if (!plan) throw AppError.notFound("This pricing plan is not available");
+      const intervalLabel = plan.billingInterval === "MONTH" ? " (monthly)" : plan.billingInterval === "YEAR" ? " (yearly)" : "";
       return {
         pricingPlanId: plan.id,
-        title: `${plan.title} plan`,
+        billingInterval: plan.billingInterval,
+        title: `${plan.title} plan${intervalLabel}`,
         licenseType: "SINGLE" as LicenseType,
         unitPrice: roundMoney(plan.price),
         discount: 0,
@@ -96,17 +118,42 @@ export class CheckoutService {
     });
   }
 
+  // Prices the cart and applies a coupon. Shared by checkout, the cart page
+  // and the coupon preview, so all three always agree.
+  async quote(items: CheckoutInput["items"], couponCode: string | undefined, customer: { userId?: string | null; email?: string }) {
+    const priced = await this.priceItems(items);
+    const isSubscription = priced.some((item) => item.billingInterval && item.billingInterval !== "ONE_TIME");
+    if (isSubscription && priced.length > 1) {
+      throw AppError.badRequest("Subscriptions must be bought on their own, not together with other items");
+    }
+
+    let coupon: Coupon | null = null;
+    if (couponCode) {
+      if (isSubscription) throw AppError.badRequest("Coupons cannot be used on subscriptions");
+      if (!customer.email) throw AppError.badRequest("An email address is required to use a coupon");
+      const result = await couponService.evaluate(couponCode, priced, { userId: customer.userId, email: customer.email });
+      coupon = result.coupon;
+      priced.forEach((item, i) => {
+        item.discount = result.itemDiscounts[i];
+        item.total = roundMoney(item.unitPrice - item.discount);
+      });
+    }
+
+    const subtotal = roundMoney(priced.reduce((sum, item) => sum + item.unitPrice, 0));
+    const discountTotal = roundMoney(priced.reduce((sum, item) => sum + item.discount, 0));
+    return { items: priced, subtotal, discountTotal, totalAmount: roundMoney(subtotal - discountTotal), coupon, isSubscription } satisfies Quote;
+  }
+
   async createCheckout(input: CheckoutInput, user?: CheckoutUser) {
     const email = user?.email ?? input.customer.email;
     if (!email) throw AppError.badRequest("An email address is required to receive your licence");
     const name = user?.fullName ?? input.customer.name ?? email.split("@")[0];
 
-    const items = await this.priceItems(input.items);
-    const subtotal = roundMoney(items.reduce((sum, item) => sum + item.unitPrice, 0));
-    const discountTotal = roundMoney(items.reduce((sum, item) => sum + item.discount, 0));
-    const totalAmount = roundMoney(subtotal - discountTotal);
-    const provider: PaymentProvider = totalAmount === 0 ? "FREE" : input.gateway === "sslcommerz" ? "SSLCOMMERZ" : "STRIPE";
+    const quote = await this.quote(input.items, input.couponCode, { userId: user?.id, email });
+    if (quote.isSubscription && !user) throw AppError.unauthorized("Please sign in to subscribe");
 
+    const { items, subtotal, discountTotal, totalAmount, coupon } = quote;
+    const provider: PaymentProvider = totalAmount === 0 ? "FREE" : input.gateway === "sslcommerz" ? "SSLCOMMERZ" : "STRIPE";
     const productItems = items.filter((item) => item.productId);
     const planItems = items.filter((item) => item.pricingPlanId);
 
@@ -125,11 +172,13 @@ export class CheckoutService {
         currency: "USD",
         provider,
         paymentMethod: gatewayLabels[provider],
+        couponId: coupon?.id ?? null,
+        couponCode: coupon?.code ?? null,
         customerEmail: email,
         customerName: name,
         billingAddress: { email, name, ...(input.customer.phone ? { phone: input.customer.phone } : {}) },
         downloadLinks: [],
-        items: { create: items },
+        items: { create: items.map(toOrderItem) },
         ...(provider === "FREE" ? { chargeAmount: 0, chargeCurrency: "USD" } : {}),
       },
       include: { items: true },
@@ -144,8 +193,15 @@ export class CheckoutService {
 
     let session: GatewaySession;
     try {
-      const gateway = provider === "SSLCOMMERZ" ? sslcommerzGateway : stripeGateway;
-      session = await gateway.createSession(order, { email, name, phone: input.customer.phone });
+      const recurring = planItems[0]?.billingInterval;
+      session =
+        provider === "SSLCOMMERZ"
+          ? await sslcommerzGateway.createSession(order, { email, name, phone: input.customer.phone })
+          : await stripeGateway.createSession(order, { email, name }, {
+              recurring: recurring === "MONTH" ? "month" : recurring === "YEAR" ? "year" : undefined,
+              userId: user?.id,
+              planId: planItems[0]?.pricingPlanId,
+            });
     } catch (error) {
       await fulfillmentService.markFailed(order.id, error instanceof Error ? error.message : "Gateway error");
       if (error instanceof AppError) throw error;
@@ -199,6 +255,7 @@ export class CheckoutService {
       input.planId ? { planId: input.planId, licenseType: "SINGLE" } : { productId: input.productId, licenseType: input.licenseType },
     ]);
     const totalAmount = roundMoney(input.totalAmount ?? item.total);
+    const discount = roundMoney(Math.max(0, item.unitPrice - totalAmount));
     const email = input.customerEmail.trim().toLowerCase();
 
     const order = await prisma.orderInvoice.create({
@@ -209,7 +266,7 @@ export class CheckoutService {
         licenseType: item.licenseType,
         status: "PENDING",
         subtotal: item.unitPrice,
-        discountTotal: roundMoney(Math.max(0, item.unitPrice - totalAmount)),
+        discountTotal: discount,
         totalAmount,
         currency: "USD",
         provider: "MANUAL",
@@ -219,7 +276,7 @@ export class CheckoutService {
         customerEmail: email,
         customerName: input.customerName ?? email.split("@")[0],
         downloadLinks: [],
-        items: { create: [{ ...item, discount: roundMoney(Math.max(0, item.unitPrice - totalAmount)), total: totalAmount }] },
+        items: { create: [{ ...toOrderItem(item), discount, total: totalAmount }] },
       },
     });
     await fulfillmentService.fulfillOrder(order.id, { provider: "MANUAL", amount: totalAmount, currency: "USD" });
@@ -234,8 +291,11 @@ export class CheckoutService {
         id: true,
         orderNumber: true,
         status: true,
+        subtotal: true,
+        discountTotal: true,
         totalAmount: true,
         currency: true,
+        couponCode: true,
         chargeAmount: true,
         chargeCurrency: true,
         provider: true,
@@ -246,6 +306,8 @@ export class CheckoutService {
           select: {
             title: true,
             licenseType: true,
+            unitPrice: true,
+            discount: true,
             total: true,
             product: { select: { id: true, slug: true, imageUrl: true } },
             pricingPlan: { select: { id: true, slug: true } },

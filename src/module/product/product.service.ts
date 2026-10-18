@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
 import { buildPaginationMeta } from "../../utils/pagination";
+import { withActiveSale } from "../../utils/pricing";
 import { slugify, uniqueProductSlug } from "../../utils/slug";
 import { CreateProductInput, ProductQuery, UpdateProductInput } from "./product.validation";
 
@@ -16,6 +17,7 @@ export const productCardSelect = {
   productType: true,
   price: true,
   salePrice: true,
+  saleEndsAt: true,
   extendedPrice: true,
   isFree: true,
   isFeatured: true,
@@ -134,7 +136,7 @@ export class ProductService {
       prisma.template.count({ where }),
     ]);
 
-    return { items, pagination: buildPaginationMeta(total, query.page, query.limit) };
+    return { items: items.map(withActiveSale), pagination: buildPaginationMeta(total, query.page, query.limit) };
   }
 
   async getPublic(idOrSlug: string) {
@@ -145,7 +147,7 @@ export class ProductService {
     if (!product) throw AppError.notFound("Product not found");
 
     const { sourceFiles, sellerId, ...rest } = product;
-    return { ...rest, sourceFileCount: sourceFiles.length };
+    return withActiveSale({ ...rest, sourceFileCount: sourceFiles.length });
   }
 
   async getForAdmin(id: string) {
@@ -166,7 +168,7 @@ export class ProductService {
     if (!product) throw AppError.notFound("Product not found");
 
     const tagIds = product.tags.map((tag) => tag.id);
-    return prisma.template.findMany({
+    const related = await prisma.template.findMany({
       where: {
         status: "PUBLISHED",
         id: { not: product.id },
@@ -180,6 +182,36 @@ export class ProductService {
       take: limit,
       select: productCardSelect,
     });
+    return related.map(withActiveSale);
+  }
+
+  // Puts paid products on sale until endsAt (salePrice = price - percent)
+  async startSale(input: { productIds?: string[]; categoryId?: string; percent: number; endsAt: Date }) {
+    const products = await prisma.template.findMany({
+      where: {
+        status: "PUBLISHED",
+        isFree: false,
+        ...(input.categoryId ? { categoryId: input.categoryId } : { id: { in: input.productIds } }),
+      },
+      select: { id: true, price: true },
+    });
+    await prisma.$transaction(
+      products.map((product) =>
+        prisma.template.update({
+          where: { id: product.id },
+          data: { salePrice: Math.round(product.price * (100 - input.percent)) / 100, saleEndsAt: input.endsAt },
+        })
+      )
+    );
+    return { updated: products.length };
+  }
+
+  async endSale(input: { productIds?: string[]; categoryId?: string }) {
+    const result = await prisma.template.updateMany({
+      where: input.categoryId ? { categoryId: input.categoryId } : { id: { in: input.productIds } },
+      data: { salePrice: null, saleEndsAt: null },
+    });
+    return { updated: result.count };
   }
 
   // Counts for the storefront filter sidebar (published products only)

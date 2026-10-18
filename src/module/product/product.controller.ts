@@ -59,6 +59,18 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
   sendResponse(res, { message: "Product updated successfully", data: product });
 });
 
+export const startSale = asyncHandler(async (req: Request, res: Response) => {
+  const result = await productService.startSale((req as any).validatedData);
+  clearProductCaches();
+  sendResponse(res, { message: `Sale started on ${result.updated} products`, data: result });
+});
+
+export const endSale = asyncHandler(async (req: Request, res: Response) => {
+  const result = await productService.endSale((req as any).validatedData);
+  clearProductCaches();
+  sendResponse(res, { message: `Sale ended on ${result.updated} products`, data: result });
+});
+
 export const deleteProduct = asyncHandler(async (req: Request, res: Response) => {
   const { archived } = await productService.remove(req.params.id);
   clearProductCaches();

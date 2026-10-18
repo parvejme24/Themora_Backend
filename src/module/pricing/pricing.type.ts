@@ -9,6 +9,8 @@ export const pricingPlanSchema = z.object({
 	recommended: z.boolean().default(false),
 	features: z.array(z.string().trim().min(1).max(120)).min(1).max(20),
 	websiteLimit: z.number().int().positive().nullable().optional(),
+	billingInterval: z.enum(["ONE_TIME", "MONTH", "YEAR"]).default("ONE_TIME"),
+	grantsAllAccess: z.boolean().default(false),
 	isActive: z.boolean().default(true),
 	sortOrder: z.number().int().default(0),
 });

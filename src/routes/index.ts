@@ -14,6 +14,9 @@ import dashboardRoutes from "../module/dashboard/dashboard.route";
 import productRoutes from "../module/product/product.route";
 import productReviewRoutes from "../module/product-review/product-review.route";
 import wishlistRoutes from "../module/wishlist/wishlist.route";
+import cartRoutes from "../module/cart/cart.route";
+import couponRoutes from "../module/coupon/coupon.route";
+import subscriptionRoutes from "../module/subscription/subscription.route";
 
 const router = Router();
 const apiV1Router = Router();
@@ -46,6 +49,11 @@ apiV1Router.use(templateRoutes);
 apiV1Router.use(productRoutes);
 apiV1Router.use(productReviewRoutes);
 apiV1Router.use(wishlistRoutes);
+
+// Cart, coupons and subscriptions
+apiV1Router.use(cartRoutes);
+apiV1Router.use(couponRoutes);
+apiV1Router.use(subscriptionRoutes);
 
 // Order routes
 apiV1Router.use(orderRoutes);

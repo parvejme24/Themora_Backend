@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
-import { OrderStatus, PaymentProvider, Prisma } from "@prisma/client";
+import { BillingInterval, OrderStatus, PaymentProvider, Prisma } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { AppError } from "../../utils/AppError";
+import { couponService } from "../coupon/coupon.service";
 
 export const generateLicenseKey = () =>
   ["THMR", ...Array.from({ length: 3 }, () => crypto.randomBytes(2).toString("hex").toUpperCase())].join("-");
@@ -11,7 +12,17 @@ export interface ConfirmedPayment {
   providerPaymentId?: string | null;
   amount: number;
   currency: string;
+  // Stripe subscription checkouts
+  subscriptionId?: string | null;
+  customerId?: string | null;
 }
+
+export const addBillingPeriod = (from: Date, interval: BillingInterval) => {
+  const end = new Date(from);
+  if (interval === "MONTH") end.setMonth(end.getMonth() + 1);
+  else end.setFullYear(end.getFullYear() + 1);
+  return end;
+};
 
 // Orders in these states can still become paid (an expired Stripe session or
 // a failed first attempt can be followed by a successful payment)
@@ -84,7 +95,11 @@ export class FulfillmentService {
 
         if (item.pricingPlanId) {
           const plan = await tx.pricingPlan.findUnique({ where: { id: item.pricingPlanId } });
-          if (plan) {
+          if (plan && plan.billingInterval !== "ONE_TIME") {
+            if (!userId) throw AppError.badRequest("Subscriptions require an account");
+            const subscription = await this.activateSubscription(tx, userId, plan.id, plan.billingInterval, payment);
+            await tx.orderInvoice.update({ where: { id: order.id }, data: { subscriptionId: subscription.id } });
+          } else if (plan) {
             const supportExpiresAt = new Date();
             supportExpiresAt.setFullYear(supportExpiresAt.getFullYear() + 1);
             await tx.planEntitlement.upsert({
@@ -103,7 +118,69 @@ export class FulfillmentService {
         }
       }
 
+      await couponService.redeem(tx, { ...order, userId });
+
+      // Bought items leave the buyer's cart
+      const boughtProductIds = order.items.flatMap((item) => (item.productId ? [item.productId] : []));
+      if (userId && boughtProductIds.length) {
+        await tx.cartItem.deleteMany({ where: { cart: { userId }, productId: { in: boughtProductIds } } });
+      }
+
       return { fulfilled: true, reason: "paid" as const, orderId, licenseIds };
+    });
+  }
+
+  /**
+   * Stripe: one subscription row per Stripe subscription (renewals arrive as
+   * invoice webhooks). SSLCommerz: a time-limited pass; buying again before
+   * it ends extends it from its current end date.
+   */
+  private async activateSubscription(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    planId: string,
+    interval: BillingInterval,
+    payment: ConfirmedPayment
+  ) {
+    const now = new Date();
+    if (payment.provider === "STRIPE" && payment.subscriptionId) {
+      return tx.subscription.upsert({
+        where: { providerSubscriptionId: payment.subscriptionId },
+        create: {
+          userId,
+          pricingPlanId: planId,
+          provider: "STRIPE",
+          providerSubscriptionId: payment.subscriptionId,
+          providerCustomerId: payment.customerId ?? null,
+          status: "ACTIVE",
+          autoRenew: true,
+          currentPeriodStart: now,
+          currentPeriodEnd: addBillingPeriod(now, interval),
+        },
+        update: { status: "ACTIVE" },
+      });
+    }
+
+    const current = await tx.subscription.findFirst({
+      where: { userId, pricingPlanId: planId, provider: payment.provider, status: "ACTIVE", currentPeriodEnd: { gt: now } },
+      orderBy: { currentPeriodEnd: "desc" },
+    });
+    if (current) {
+      return tx.subscription.update({
+        where: { id: current.id },
+        data: { currentPeriodEnd: addBillingPeriod(current.currentPeriodEnd, interval), reminderSentAt: null },
+      });
+    }
+    return tx.subscription.create({
+      data: {
+        userId,
+        pricingPlanId: planId,
+        provider: payment.provider,
+        status: "ACTIVE",
+        autoRenew: false,
+        currentPeriodStart: now,
+        currentPeriodEnd: addBillingPeriod(now, interval),
+      },
     });
   }
 

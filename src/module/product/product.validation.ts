@@ -74,6 +74,7 @@ const productFields = {
   categoryId: z.string().uuid("Invalid category ID"),
   price: z.coerce.number().min(0),
   salePrice: z.coerce.number().min(0).optional().nullable(),
+  saleEndsAt: z.coerce.date().optional().nullable(),
   extendedPrice: z.coerce.number().min(0).optional().nullable(),
   isFree: z.boolean().default(false),
   isFeatured: z.boolean().default(false),
@@ -115,6 +116,22 @@ const updateFields = Object.fromEntries(
 ) as unknown as { [K in keyof typeof productFields]: z.ZodOptional<z.ZodTypeAny> };
 
 export const updateProductSchema = z.object(updateFields).superRefine(checkPrices as any);
+
+export const saleSchema = z
+  .object({
+    productIds: z.array(z.string().uuid()).max(200).optional(),
+    categoryId: z.string().uuid().optional(),
+    percent: z.number().int().min(1).max(90),
+    endsAt: z.coerce.date().refine((date) => date > new Date(), "The sale must end in the future"),
+  })
+  .refine((data) => Boolean(data.productIds?.length) !== Boolean(data.categoryId), "Choose either productIds or a categoryId");
+
+export const endSaleSchema = z
+  .object({
+    productIds: z.array(z.string().uuid()).max(200).optional(),
+    categoryId: z.string().uuid().optional(),
+  })
+  .refine((data) => Boolean(data.productIds?.length) !== Boolean(data.categoryId), "Choose either productIds or a categoryId");
 
 export type ProductQuery = z.infer<typeof adminProductQuerySchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
