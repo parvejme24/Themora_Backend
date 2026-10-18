@@ -7,11 +7,11 @@ import { validateRequest } from "../../utils/validateRequest";
 import { cartService } from "./cart.service";
 
 const licenseType = z.enum(["SINGLE", "EXTENDED"]).default("SINGLE");
-const cartItemSchema = z.object({ productId: z.string().uuid("Invalid product ID"), licenseType });
+export const cartItemSchema = z.object({ productId: z.string().uuid("Invalid product ID"), licenseType });
 const productParamSchema = z.object({ productId: z.string().uuid("Invalid product ID") });
-const mergeSchema = z.object({ items: z.array(cartItemSchema).max(50) });
-const couponSchema = z.object({ code: z.string().trim().min(1).max(30) });
-const checkoutSchema = z.object({ gateway: z.enum(["stripe", "sslcommerz"]), phone: z.string().trim().max(20).optional() });
+export const mergeSchema = z.object({ items: z.array(cartItemSchema).max(50) });
+export const couponSchema = z.object({ code: z.string().trim().min(1).max(30) });
+export const checkoutSchema = z.object({ gateway: z.enum(["stripe", "sslcommerz"]), phone: z.string().trim().max(20).optional() });
 
 const userOf = (req: Request) => (req as any).user as { id: string; email: string; fullName: string };
 

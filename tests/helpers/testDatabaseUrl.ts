@@ -1,6 +1,10 @@
 import "dotenv/config";
 
-export const TEST_SCHEMA = "themora_test";
+// CI uses its own schema per run (TEST_SCHEMA=themora_ci_<run id>)
+export const TEST_SCHEMA = process.env.TEST_SCHEMA || "themora_test";
+if (!/^themora_[a-z0-9_]+$/.test(TEST_SCHEMA)) {
+  throw new Error(`TEST_SCHEMA must look like "themora_<name>", got "${TEST_SCHEMA}"`);
+}
 
 // Tests run on the same Neon database as development, isolated in their own
 // Postgres schema so the `public` schema (live data) is never touched.

@@ -74,6 +74,8 @@ export class CartService {
     }
 
     const cart = await getOrCreateCart(user.id);
+    // A changed cart may get a new reminder later
+    await prisma.cart.update({ where: { id: cart.id }, data: { reminderSentAt: null } });
     await prisma.cartItem.upsert({
       where: { cartId_productId: { cartId: cart.id, productId } },
       create: { cartId: cart.id, productId, licenseType },

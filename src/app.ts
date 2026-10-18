@@ -4,9 +4,12 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { xss } from "express-xss-sanitizer";
 import morgan from "morgan";
+import pinoHttp from "pino-http";
+import { logger } from "./config/monitoring";
 import { env } from "./config/env";
 import { prisma } from "./config/database";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { buildOpenApiSpec, swaggerHtml } from "./docs/openapi";
 
 const app = express();
 
@@ -14,14 +17,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Logging middleware
-if (env.NODE_ENV !== "test") {
+// Request logs: JSON in production (searchable in Vercel), readable in development
+if (env.NODE_ENV === "production") {
+  app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/health" } }));
+} else if (env.NODE_ENV !== "test") {
   app.use(morgan("dev"));
-
-  // Custom request logging
-  app.use((req, res, next) => {
-    console.log(`📝 ${new Date().toISOString()} - ${req.method} ${req.url}`);
-    next();
-  });
 }
 
 // Security middleware
@@ -41,39 +41,26 @@ const limiter = rateLimit({
 app.use(limiter);
 
 
-const rawOrigins = [
-  env.FRONTEND_URL,
-  ...env.CORS_ORIGINS.split(","),
-  "https://themora.vercel.app",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:5174",
-];
-
-const allowedOrigins = Array.from(
-  new Set(
-    rawOrigins
-      .filter(Boolean)
-      .map((origin) => origin.trim().replace(/\/+$/, ""))
-  )
+const allowedOrigins = new Set(
+  [env.FRONTEND_URL, ...env.CORS_ORIGINS.split(","), "https://themora.vercel.app"]
+    .filter(Boolean)
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
 );
+if (env.NODE_ENV !== "production") {
+  ["http://localhost:3000", "http://localhost:3001", "http://localhost:5174"].forEach((origin) => allowedOrigins.add(origin));
+}
+
+// Vercel preview deployments of the Themora frontend only (not any *.vercel.app site)
+const PREVIEW_ORIGIN = /^https:\/\/themora(-frontend)?(-[a-z0-9-]+)?\.vercel\.app$/;
 
 app.use(
   cors({
     origin: (requestOrigin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      // Server-to-server calls (webhooks, cron, curl) send no Origin header
       if (!requestOrigin) return callback(null, true);
-
-      const normalizedOrigin = requestOrigin.trim().replace(/\/+$/, "");
-      if (
-        allowedOrigins.includes(normalizedOrigin) ||
-        normalizedOrigin.endsWith(".vercel.app")
-      ) {
-        return callback(null, true);
-      }
-
-      console.warn(`⚠️ Blocked by CORS: ${requestOrigin}`);
-      return callback(null, true); // Still allow in development/staging or pass through to avoid unexpected frontend outages
+      const origin = requestOrigin.trim().replace(/\/+$/, "");
+      // Unknown origins get no CORS headers, so browsers block the response
+      callback(null, allowedOrigins.has(origin) || PREVIEW_ORIGIN.test(origin));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -121,6 +108,21 @@ app.get("/health", async (_req, res) => {
   } catch {
     res.status(503).json({ success: false, status: "degraded", database: "down", timestamp: new Date().toISOString() });
   }
+});
+
+// API documentation (OpenAPI generated from the request validation schemas)
+app.get("/api/v1/openapi.json", (_req, res) => {
+  res.json(buildOpenApiSpec());
+});
+app.get("/docs", (_req, res) => {
+  // Swagger UI loads its assets from jsDelivr
+  res
+    .setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:"
+    )
+    .type("html")
+    .send(swaggerHtml);
 });
 
 app.use(notFoundHandler);

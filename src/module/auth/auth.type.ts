@@ -22,11 +22,9 @@ export const loginUserSchema = z.object({
 });
 
 // Google OAuth login schema
+// The Google ID token (NextAuth: account.id_token) is the only source of identity
 export const googleLoginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  providerId: z.string().min(1, "Provider ID is required"),
-  avatarUrl: z.string().url("Invalid avatar URL").optional(),
+  idToken: z.string().min(20, "A Google ID token is required"),
   clientToken: z.string().min(10).optional(),
 });
 

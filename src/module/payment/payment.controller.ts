@@ -9,6 +9,7 @@ import { fulfillmentService } from "./fulfillment.service";
 import { sslcommerzGateway } from "./gateways/sslcommerz.gateway";
 import { stripeGateway } from "./gateways/stripe.gateway";
 import { checkoutReturnUrls } from "./payment.urls";
+import { captureError } from "../../config/monitoring";
 import { subscriptionService } from "../subscription/subscription.service";
 
 const checkoutUser = (req: Request) => {
@@ -106,7 +107,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     await fulfillmentService.completeWebhookEvent("STRIPE", event.id);
     return res.json({ received: true });
   } catch (error) {
-    console.error(`Stripe webhook ${event.type} failed:`, error);
+    captureError(error, { webhook: "stripe", eventType: event.type, eventId: event.id });
     await fulfillmentService.completeWebhookEvent("STRIPE", event.id, error instanceof Error ? error.message : "Unknown error");
     // 500 makes Stripe retry later
     return res.status(500).json({ received: false });
@@ -175,7 +176,7 @@ export const sslcommerzIpn = async (req: Request, res: Response) => {
     await fulfillmentService.completeWebhookEvent("SSLCOMMERZ", String(eventId));
     return res.json({ received: true });
   } catch (error) {
-    console.error("SSLCommerz IPN failed:", error);
+    captureError(error, { webhook: "sslcommerz", tranId });
     return res.status(500).json({ received: false });
   }
 };

@@ -18,6 +18,8 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().default(""),
   CLOUDINARY_API_SECRET: z.string().default(""),
   CLOUDINARY_URL: z.string().default(""),
+  // Comma-separated Google OAuth client IDs accepted as ID token audiences
+  GOOGLE_CLIENT_ID: z.string().default(""),
   // Public URL of this API, used for SSLCommerz callbacks
   BACKEND_URL: z.string().default("http://localhost:5050"),
   STRIPE_SECRET_KEY: z.string().default(""),
@@ -29,6 +31,10 @@ const envSchema = z.object({
   USD_TO_BDT_RATE: z.coerce.number().positive().default(122),
   // Buyers can request a refund this many days after paying
   REFUND_WINDOW_DAYS: z.coerce.number().int().min(0).default(14),
+  // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>"
+  CRON_SECRET: z.string().default(""),
+  SENTRY_DSN: z.string().default(""),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   VERCEL: z.string().optional(),
 });
 

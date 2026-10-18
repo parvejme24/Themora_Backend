@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Tests run only when this repository secret is set (a Neon connection string).
+      # Each run uses its own schema, dropped at the end.
+      TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+      TEST_SCHEMA: themora_ci_${{ github.run_id }}
+      TEST_DROP_SCHEMA: "true"
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'postgresql://ci:ci@localhost:5432/ci' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Test
+        if: env.TEST_DATABASE_URL != ''
+        run: npm test

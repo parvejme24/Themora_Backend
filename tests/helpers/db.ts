@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { prisma } from "../../src/config/database";
 import { TEST_SCHEMA, assertTestDatabaseUrl } from "./testDatabaseUrl";
+import { hashToken } from "../../src/utils/secureToken";
 
 // Empties every table in the test schema. Call in beforeEach/beforeAll.
 export const resetDatabase = async () => {
@@ -35,7 +36,7 @@ export const createTestUser = async (options: TestUserOptions = {}) => {
       isBanned: options.isBanned ?? false,
       otpVerified: true,
       isLoggedIn: true,
-      nextAuthSecret: token,
+      nextAuthSecret: hashToken(token),
       nextAuthExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
       provider: "email",
     },

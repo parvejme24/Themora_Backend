@@ -18,11 +18,24 @@ import {
   IResetPasswordWithOtp,
 } from "./auth.interface";
 import { sendOtpEmail } from "../../utils/email";
+import { env } from "../../config/env";
+import { OAuth2Client } from "google-auth-library";
+import {
+  MAX_OTP_ATTEMPTS,
+  generateOtp,
+  generateSessionToken,
+  hashOtp,
+  hashToken,
+  otpMatches,
+  toSafeUser,
+} from "../../utils/secureToken";
+
+const googleClient = new OAuth2Client();
 
 class AuthService {
   // Generate NextAuth secret
   private generateNextAuthSecret(): string {
-    return crypto.randomBytes(32).toString("hex");
+    return generateSessionToken();
   }
 
   // Generate session expiration (24 hours from now)
@@ -30,6 +43,16 @@ class AuthService {
     const expiration = new Date();
     expiration.setHours(expiration.getHours() + 24);
     return expiration;
+  }
+
+  // Counts a wrong code; after MAX_OTP_ATTEMPTS the code is discarded
+  private async recordFailedOtp(userId: string, attempts: number): Promise<boolean> {
+    const locked = attempts + 1 >= MAX_OTP_ATTEMPTS;
+    await prisma.user.update({
+      where: { id: userId },
+      data: locked ? { otpCode: null, otpPurpose: null, otpExpiresAt: null, otpAttempts: 0 } : { otpAttempts: { increment: 1 } },
+    });
+    return locked;
   }
 
   // Register new user
@@ -63,7 +86,7 @@ class AuthService {
       const hashedPassword = await bcrypt.hash(data.password, 12);
 
       // Prepare OTP for email verification
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = generateOtp();
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
       // If clientToken provided, store as nextAuthSecret but do not log in until OTP verified
@@ -78,7 +101,7 @@ class AuthService {
           fullName: userFullName,
           email: normalizedEmail,
           password: hashedPassword,
-          nextAuthSecret,
+          nextAuthSecret: nextAuthSecret ? hashToken(nextAuthSecret) : null,
           nextAuthExpiresAt: sessionExpiration,
           isLoggedIn: false,
           lastLoginAt: null,
@@ -93,9 +116,10 @@ class AuthService {
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          otpCode: otp,
+          otpCode: hashOtp(user.id, otp),
           otpPurpose: OtpPurpose.REGISTRATION,
           otpExpiresAt: otpExpiresAt,
+          otpAttempts: 0,
           otpVerified: false,
         },
       });
@@ -112,13 +136,7 @@ class AuthService {
         };
       }
 
-      const {
-        password: _password,
-        otpCode: _otpCode,
-        otpPurpose: _otpPurpose,
-        otpExpiresAt: _otpExpiresAt,
-        ...safeUser
-      } = user;
+      const safeUser = toSafeUser(user);
 
       return {
         success: true,
@@ -205,7 +223,7 @@ class AuthService {
       const updatedUser = await prisma.user.update({
         where: { id: user.id },
         data: {
-          nextAuthSecret,
+          nextAuthSecret: hashToken(nextAuthSecret),
           nextAuthExpiresAt: sessionExpiration,
           isLoggedIn: true,
           lastLoginAt: new Date(),
@@ -213,13 +231,7 @@ class AuthService {
         include: { profile: true },
       });
 
-      const {
-        password: _password,
-        otpCode: _otpCode,
-        otpPurpose: _otpPurpose,
-        otpExpiresAt: _otpExpiresAt,
-        ...safeUser
-      } = updatedUser;
+      const safeUser = toSafeUser(updatedUser);
 
       return {
         success: true,
@@ -241,89 +253,68 @@ class AuthService {
   }
 
   // Google OAuth login
+  /**
+   * Google sign-in. The identity comes only from a Google-signed ID token
+   * verified here; emails sent in the request body are never trusted.
+   */
   public async googleLogin(data: IGoogleLogin): Promise<IAuthResponse> {
     try {
-      // Check if user exists
-      let user = await prisma.user.findUnique({
-        where: { email: data.email },
-        include: { profile: true },
-      });
-
-      if (user) {
-        // Update existing user with Google info
-        const nextAuthSecret = this.generateNextAuthSecret();
-        const sessionExpiration = this.generateSessionExpiration();
-
-        const updatedUser = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            nextAuthSecret: data.clientToken || nextAuthSecret,
-            nextAuthExpiresAt: sessionExpiration,
-            isLoggedIn: true,
-            lastLoginAt: new Date(),
-            provider: "google",
-            providerId: data.providerId,
-            otpVerified: true,
-          },
-          include: { profile: true },
-        });
-
-        return {
-          success: true,
-          message: "Google login successful",
-          data: {
-            user: updatedUser as any,
-            nextAuthSecret,
-            expiresAt: sessionExpiration,
-          },
-        };
-      } else {
-        // Create new user with Google info
-        const nextAuthSecret = this.generateNextAuthSecret();
-        const sessionExpiration = this.generateSessionExpiration();
-
-        const newUser = await prisma.user.create({
-          data: {
-            fullName: data.fullName,
-            email: data.email,
-            nextAuthSecret: data.clientToken || nextAuthSecret,
-            nextAuthExpiresAt: sessionExpiration,
-            isLoggedIn: true,
-            lastLoginAt: new Date(),
-            provider: "google",
-            providerId: data.providerId,
-            otpVerified: true,
-          },
-          include: { profile: true },
-        });
-
-        // Create user profile if avatar URL provided
-        if (data.avatarUrl) {
-          await prisma.userProfile.create({
-            data: {
-              userId: newUser.id,
-              avatarUrl: data.avatarUrl,
-            },
-          });
-        }
-
-        return {
-          success: true,
-          message: "Google registration and login successful",
-          data: {
-            user: newUser as any,
-            nextAuthSecret,
-            expiresAt: sessionExpiration,
-          },
-        };
+      if (!env.GOOGLE_CLIENT_ID) {
+        return { success: false, message: "Google sign-in is not configured", error: "Google not configured" };
       }
+      let payload;
+      try {
+        const ticket = await googleClient.verifyIdToken({ idToken: data.idToken, audience: env.GOOGLE_CLIENT_ID.split(",") });
+        payload = ticket.getPayload();
+      } catch {
+        payload = undefined;
+      }
+      if (!payload?.email || !payload.email_verified || !payload.sub) {
+        return { success: false, message: "Google sign-in could not be verified", error: "Invalid Google token" };
+      }
+
+      const email = payload.email.trim().toLowerCase();
+      const token = data.clientToken || this.generateNextAuthSecret();
+      const sessionExpiration = this.generateSessionExpiration();
+      const session = {
+        nextAuthSecret: hashToken(token),
+        nextAuthExpiresAt: sessionExpiration,
+        isLoggedIn: true,
+        lastLoginAt: new Date(),
+        otpVerified: true,
+      };
+
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing && (existing.isBanned || existing.isTrashed || existing.isDeletedPermanently)) {
+        return { success: false, message: "This account cannot sign in", error: "Account access denied" };
+      }
+
+      const user = existing
+        ? await prisma.user.update({
+            where: { id: existing.id },
+            data: { ...session, provider: existing.provider ?? "google", providerId: existing.providerId ?? payload.sub },
+            include: { profile: true },
+          })
+        : await prisma.user.create({
+            data: {
+              ...session,
+              fullName: payload.name || email.split("@")[0],
+              email,
+              provider: "google",
+              providerId: payload.sub,
+              ...(payload.picture ? { profile: { create: { avatarUrl: payload.picture } } } : {}),
+            },
+            include: { profile: true },
+          });
+
+      return {
+        success: true,
+        message: existing ? "Google login successful" : "Google registration and login successful",
+        data: { user: toSafeUser(user) as any, nextAuthSecret: token, expiresAt: sessionExpiration },
+      };
     } catch (error) {
       console.error("Error with Google login:", error);
-      return {
-        success: false,
-        message: "Failed to login with Google",
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      return { success: false, message: "Failed to login with Google", error: "Google login failed" };
     }
   }
 
@@ -334,7 +325,7 @@ class AuthService {
     try {
       const user = await prisma.user.findFirst({
         where: {
-          nextAuthSecret,
+          nextAuthSecret: hashToken(nextAuthSecret),
           isLoggedIn: true,
           nextAuthExpiresAt: {
             gt: new Date(),
@@ -352,7 +343,7 @@ class AuthService {
 
       return {
         isValid: true,
-        user: user as any,
+        user: toSafeUser(user) as any,
       };
     } catch (error) {
       console.error("Error validating session:", error);
@@ -367,7 +358,7 @@ class AuthService {
   public async logoutUser(nextAuthSecret: string): Promise<IAuthResponse> {
     try {
       const user = await prisma.user.findFirst({
-        where: { nextAuthSecret },
+        where: { nextAuthSecret: hashToken(nextAuthSecret) },
       });
 
       if (!user) {
@@ -429,8 +420,11 @@ class AuthService {
       if (new Date() > user.otpExpiresAt) {
         return { success: false, message: "OTP expired", error: "OTP expired" };
       }
-      if (user.otpCode !== data.otp) {
-        return { success: false, message: "Invalid OTP", error: "Invalid OTP" };
+      if (!otpMatches(user.id, data.otp, user.otpCode)) {
+        const locked = await this.recordFailedOtp(user.id, user.otpAttempts);
+        return locked
+          ? { success: false, message: "Too many incorrect codes. Please request a new one", error: "OTP locked" }
+          : { success: false, message: "Invalid OTP", error: "Invalid OTP" };
       }
 
       await prisma.user.update({
@@ -440,6 +434,7 @@ class AuthService {
           otpCode: null,
           otpPurpose: null,
           otpExpiresAt: null,
+          otpAttempts: 0,
         },
       });
 
@@ -475,12 +470,12 @@ class AuthService {
         };
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = generateOtp();
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
       await prisma.user.update({
         where: { id: user.id },
-        data: { otpCode: otp, otpPurpose: "REGISTRATION" as any, otpExpiresAt },
+        data: { otpCode: hashOtp(user.id, otp), otpPurpose: "REGISTRATION" as any, otpExpiresAt, otpAttempts: 0 },
       });
 
       await sendOtpEmail(user.email, otp);
@@ -505,11 +500,11 @@ class AuthService {
         return { success: true, message: genericMessage };
       }
 
-      const otp = crypto.randomInt(100000, 1000000).toString();
+      const otp = generateOtp();
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
       await prisma.user.update({
         where: { id: user.id },
-        data: { otpCode: otp, otpPurpose: OtpPurpose.PASSWORD_RESET, otpExpiresAt },
+        data: { otpCode: hashOtp(user.id, otp), otpPurpose: OtpPurpose.PASSWORD_RESET, otpExpiresAt, otpAttempts: 0 },
       });
 
       try {
@@ -533,8 +528,14 @@ class AuthService {
   public async verifyPasswordResetOtp(data: IVerifyOtp): Promise<IAuthResponse> {
     try {
       const user = await prisma.user.findUnique({ where: { email: data.email.trim().toLowerCase() } });
-      if (!user || user.otpPurpose !== OtpPurpose.PASSWORD_RESET || !user.otpCode || !user.otpExpiresAt || user.otpExpiresAt < new Date() || user.otpCode !== data.otp) {
+      if (!user || user.otpPurpose !== OtpPurpose.PASSWORD_RESET || !user.otpCode || !user.otpExpiresAt || user.otpExpiresAt < new Date()) {
         return { success: false, message: "The reset code is invalid or expired", error: "Invalid reset code" };
+      }
+      if (!otpMatches(user.id, data.otp, user.otpCode)) {
+        const locked = await this.recordFailedOtp(user.id, user.otpAttempts);
+        return locked
+          ? { success: false, message: "Too many incorrect codes. Please request a new one", error: "OTP locked" }
+          : { success: false, message: "The reset code is invalid or expired", error: "Invalid reset code" };
       }
       return { success: true, message: "Reset code verified" };
     } catch (error) {
@@ -559,6 +560,7 @@ class AuthService {
           otpCode: null,
           otpPurpose: null,
           otpExpiresAt: null,
+          otpAttempts: 0,
           otpVerified: true,
           nextAuthSecret: null,
           nextAuthExpiresAt: null,
@@ -693,13 +695,7 @@ class AuthService {
         };
       }
 
-      const {
-        password: _password,
-        otpCode: _otpCode,
-        otpPurpose: _otpPurpose,
-        otpExpiresAt: _otpExpiresAt,
-        ...safeUser
-      } = user;
+      const safeUser = toSafeUser(user);
 
       return {
         success: true,
@@ -732,13 +728,7 @@ class AuthService {
         };
       }
 
-      const {
-        password: _password,
-        otpCode: _otpCode,
-        otpPurpose: _otpPurpose,
-        otpExpiresAt: _otpExpiresAt,
-        ...safeUser
-      } = user;
+      const safeUser = toSafeUser(user);
 
       return {
         success: true,
@@ -911,13 +901,7 @@ class AuthService {
         include: { profile: true },
       });
 
-      const {
-        password: _password,
-        otpCode: _otpCode,
-        otpPurpose: _otpPurpose,
-        otpExpiresAt: _otpExpiresAt,
-        ...safeUser
-      } = updatedUser;
+      const safeUser = toSafeUser(updatedUser);
 
       return {
         success: true,

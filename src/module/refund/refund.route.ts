@@ -7,9 +7,9 @@ import { validateRequest } from "../../utils/validateRequest";
 import { refundService } from "./refund.service";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
-const requestSchema = z.object({ reason: z.string().trim().min(10, "Please tell us a little more (at least 10 characters)").max(2000) });
-const approveSchema = z.object({ note: z.string().trim().max(1000).optional() });
-const rejectSchema = z.object({ note: z.string().trim().min(5, "Explain the decision to the customer").max(1000) });
+export const requestSchema = z.object({ reason: z.string().trim().min(10, "Please tell us a little more (at least 10 characters)").max(2000) });
+export const approveSchema = z.object({ note: z.string().trim().max(1000).optional() });
+export const rejectSchema = z.object({ note: z.string().trim().min(5, "Explain the decision to the customer").max(1000) });
 const adminQuerySchema = z.object({
   status: z.enum(["REQUESTED", "REFUNDED", "REJECTED", "FAILED"]).optional(),
   page: z.coerce.number().int().min(1).default(1),

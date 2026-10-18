@@ -121,3 +121,29 @@ export async function sendRefundDecisionEmail(
     html: `<p>Hi ${escapeHtml(name)},</p><p>${message}</p>${note ? `<p><b>Note from our team:</b> ${escapeHtml(note)}</p>` : ""}`,
   });
 }
+
+export async function sendSubscriptionReminderEmail(to: string, name: string, planTitle: string, endsAt: Date): Promise<void> {
+  const link = `${frontendUrl()}/pricing`;
+  const date = endsAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  await transporter.sendMail({
+    from: EMAIL_FROM || SMTP_USER,
+    to,
+    subject: `Your ${planTitle} access ends on ${date}`,
+    text: `Hi ${name},\n\nYour ${planTitle} access ends on ${date}. Renew any time before then to keep downloading every product: ${link}`,
+    html: `<p>Hi ${escapeHtml(name)},</p><p>Your <b>${escapeHtml(planTitle)}</b> access ends on <b>${date}</b>.</p><p><a href="${link}">Renew now</a> to keep downloading every product.</p>`,
+  });
+}
+
+export async function sendAbandonedCartEmail(to: string, name: string, items: { title: string; price: number }[]): Promise<void> {
+  const link = `${frontendUrl()}/cart`;
+  const lines = items.slice(0, 5);
+  await transporter.sendMail({
+    from: EMAIL_FROM || SMTP_USER,
+    to,
+    subject: "You left something in your cart",
+    text: `Hi ${name},\n\nThese are still waiting in your cart:\n${lines.map((item) => `- ${item.title} ($${item.price.toFixed(2)})`).join("\n")}\n\nComplete your order: ${link}`,
+    html: `<p>Hi ${escapeHtml(name)},</p><p>These are still waiting in your cart:</p><ul>${lines
+      .map((item) => `<li>${escapeHtml(item.title)} ($${item.price.toFixed(2)})</li>`)
+      .join("")}</ul><p><a href="${link}">Complete your order</a></p>`,
+  });
+}

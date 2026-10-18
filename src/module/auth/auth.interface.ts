@@ -23,10 +23,7 @@ export interface ILoginUser {
 
 // Google OAuth login interface
 export interface IGoogleLogin {
-  email: string;
-  fullName: string;
-  providerId: string;
-  avatarUrl?: string;
+  idToken: string; // Google-signed ID token, verified by the backend
   clientToken?: string; // Frontend-provided session token to store as nextAuthSecret
 }
 

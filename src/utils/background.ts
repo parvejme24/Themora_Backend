@@ -1,4 +1,5 @@
 import { waitUntil } from "@vercel/functions";
+import { captureError, flushMonitoring } from "../config/monitoring";
 
 // Runs work after the response is sent. On Vercel, waitUntil keeps the
 // function alive until the promise settles; elsewhere it simply runs.
@@ -6,7 +7,8 @@ import { waitUntil } from "@vercel/functions";
 export const runInBackground = (label: string, work: () => Promise<unknown>) => {
   // Promise.resolve().then also catches synchronous throws and non-promise returns
   const promise = Promise.resolve().then(work).catch((error) => {
-    console.error(`Background task "${label}" failed:`, error);
+    captureError(error, { task: label });
+    return flushMonitoring();
   });
   try {
     waitUntil(promise);

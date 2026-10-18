@@ -9,11 +9,11 @@ import { checkoutService } from "../payment/checkout.service";
 import { licenseService } from "./license.service";
 
 const licenseKey = z.string().trim().min(8).max(64);
-const verifySchema = z.object({ licenseKey, domain: z.string().trim().max(253).optional() });
-const activationSchema = z.object({ licenseKey, domain: z.string().trim().min(1).max(253) });
+export const verifySchema = z.object({ licenseKey, domain: z.string().trim().max(253).optional() });
+export const activationSchema = z.object({ licenseKey, domain: z.string().trim().min(1).max(253) });
 const idParamSchema = z.object({ id: z.string().uuid() });
 const activationParamSchema = z.object({ id: z.string().uuid(), activationId: z.string().uuid() });
-const upgradeSchema = z.object({ gateway: z.enum(["stripe", "sslcommerz"]), phone: z.string().trim().max(20).optional() });
+export const upgradeSchema = z.object({ gateway: z.enum(["stripe", "sslcommerz"]), phone: z.string().trim().max(20).optional() });
 
 // Public licence endpoints are called by buyers' software; limit guessing
 const publicLimiter = rateLimit({

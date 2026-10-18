@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { AppError } from "../utils/AppError";
 import { env } from "../config/env";
+import { captureError } from "../config/monitoring";
 
 export const notFoundHandler = (req: Request, res: Response) => {
   res.status(404).json({
@@ -51,7 +52,7 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
   }
 
   if (appError.statusCode >= 500) {
-    console.error("Unhandled error:", err);
+    captureError(err, { path: _req.originalUrl, method: _req.method });
   }
 
   const exposeDetails = env.NODE_ENV !== "production" && appError.statusCode >= 500;

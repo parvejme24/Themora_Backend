@@ -20,4 +20,15 @@ export default async function setup() {
     stdio: "pipe",
     env: { ...process.env, DATABASE_URL: databaseUrl },
   });
+
+  // CI drops its per-run schema afterwards
+  return async () => {
+    if (process.env.TEST_DROP_SCHEMA !== "true") return;
+    const client = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+    try {
+      await client.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${TEST_SCHEMA}" CASCADE`);
+    } finally {
+      await client.$disconnect();
+    }
+  };
 }

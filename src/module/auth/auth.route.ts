@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import {
   registerUser,
   loginUser,
@@ -48,17 +49,28 @@ import {
 import { uploadAvatarImageCloudinary, handleUploadError } from "../../middleware/cloudinary-upload";
 import { Request, Response, NextFunction } from "express";
 
+// Slows down password guessing and OTP brute force (per IP)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  skip: () => process.env.NODE_ENV === "test",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many attempts. Please wait 15 minutes and try again" },
+});
+
 const router = Router();
 
 // Public routes (no authentication required)
-router.post("/auth/register", validateRegisterUser, registerUser);
-router.post("/auth/verify-otp", validateVerifyOtp, verifyOtp);
-router.post("/auth/resend-otp", validateResendOtp, resendOtp);
-router.post("/auth/password-reset/request", validateRequestPasswordReset, requestPasswordReset);
-router.post("/auth/password-reset/verify", validatePasswordResetOtp, verifyPasswordResetOtp);
-router.post("/auth/password-reset/confirm", validateResetPasswordWithOtp, resetPasswordWithOtp);
-router.post("/auth/login", validateLoginUser, loginUser);
-router.post("/auth/google-login", validateGoogleLogin, googleLogin);
+router.post("/auth/register", authLimiter, validateRegisterUser, registerUser);
+router.post("/auth/verify-otp", authLimiter, validateVerifyOtp, verifyOtp);
+router.post("/auth/resend-otp", authLimiter, validateResendOtp, resendOtp);
+router.post("/auth/password-reset/request", authLimiter, validateRequestPasswordReset, requestPasswordReset);
+router.post("/auth/password-reset/verify", authLimiter, validatePasswordResetOtp, verifyPasswordResetOtp);
+router.post("/auth/password-reset/confirm", authLimiter, validateResetPasswordWithOtp, resetPasswordWithOtp);
+router.post("/auth/login", authLimiter, validateLoginUser, loginUser);
+router.post("/auth/google-login", authLimiter, validateGoogleLogin, googleLogin);
+router.post("/auth/google", authLimiter, validateGoogleLogin, googleLogin);
 router.post("/auth/validate-session", validateSessionValidation, validateSession);
 router.post("/auth/logout", validateLogout, logoutUser);
 
