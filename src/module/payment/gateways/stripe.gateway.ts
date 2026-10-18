@@ -66,8 +66,20 @@ export const stripeGateway = {
     return session.url;
   },
 
-  async refund(paymentIntentId: string) {
-    return getClient().refunds.create({ payment_intent: paymentIntentId });
+  // Accepts a payment intent (one-time orders) or an invoice (subscriptions)
+  async refund(paymentId: string) {
+    let paymentIntent = paymentId;
+    if (paymentId.startsWith("in_")) {
+      const invoice: any = await getClient().invoices.retrieve(paymentId);
+      const fromInvoice = invoice.payment_intent ?? invoice.payments?.data?.[0]?.payment?.payment_intent;
+      paymentIntent = typeof fromInvoice === "string" ? fromInvoice : fromInvoice?.id;
+      if (!paymentIntent) throw new AppError(502, "Could not find the Stripe payment for this invoice");
+    }
+    return getClient().refunds.create({ payment_intent: paymentIntent });
+  },
+
+  cancelSubscription(subscriptionId: string) {
+    return getClient().subscriptions.cancel(subscriptionId);
   },
 
   fromCents(amount: number | null | undefined) {

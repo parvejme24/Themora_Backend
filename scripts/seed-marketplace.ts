@@ -11,6 +11,7 @@
  */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
+import { v2 as cloudinary } from "cloudinary";
 import { LicenseType, Prisma, PrismaClient } from "@prisma/client";
 import {
   baseCategories,
@@ -376,6 +377,84 @@ async function seedCommerce() {
   console.log(`🏷  Upserted ${seedPlans.length} all-access plans, ${seedCoupons.length + 1} coupons; ${onSale.length} products on a 7-day flash sale`);
 }
 
+const changelogPool = [
+  ["Added dark mode support across all pages", "Improved Lighthouse performance score to 98", "Fixed mobile menu closing on route change"],
+  ["Upgraded to the latest framework version", "New pricing and FAQ sections", "Accessibility fixes for keyboard navigation"],
+  ["Added RTL language support", "New dashboard widgets", "Fixed form validation messages"],
+  ["Updated all dependencies", "New onboarding screens", "Bug fixes and performance improvements"],
+  ["Initial release"],
+];
+
+const DEMO_PACKAGE = `# Themora demo source package
+
+This file stands in for a real product download in the Themora demo store.
+Real products ship their full source code archive here.
+
+Licence keys, versions and download links in the demo work exactly like the live store.
+`;
+
+// One small private file on Cloudinary that every demo version points to,
+// so the secure download flow can be tried end to end
+async function uploadDemoPackage(): Promise<string | null> {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.CLAUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY || process.env.CLAUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || process.env.CLAUDINARY_API_SECRET;
+  if (!cloudName || !apiKey || !apiSecret) return null;
+  cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
+  try {
+    const result = await cloudinary.uploader.upload(`data:text/markdown;base64,${Buffer.from(DEMO_PACKAGE).toString("base64")}`, {
+      resource_type: "raw",
+      type: "authenticated",
+      public_id: "themora/source-files/demo-source-package.md",
+      overwrite: true,
+    });
+    return result.public_id;
+  } catch (error) {
+    console.warn("⚠️  Could not upload the demo package to Cloudinary; versions will be created without files", error);
+    return null;
+  }
+}
+
+async function seedVersions() {
+  const cloudinaryId = await uploadDemoPackage();
+  if (!cloudinaryId) {
+    console.log("⏭  Skipped versions (Cloudinary not configured)");
+    return;
+  }
+  const products = await prisma.template.findMany({
+    where: { slug: { in: seedProducts.map((p) => p.slug) } },
+    select: { id: true, slug: true, version: true, publishedAt: true },
+  });
+
+  let created = 0;
+  await inBatches(products, async (product) => {
+    const major = Math.floor(product.version);
+    const minor = Math.round((product.version - major) * 10);
+    // e.g. 3.2 → 3.0, 3.1, 3.2 (at most three releases)
+    const releases = Array.from({ length: Math.min(minor + 1, 3) }, (_, i) => `${major}.${minor - i}`).reverse();
+    const start = product.publishedAt ?? daysAgo(200);
+
+    for (const [index, version] of releases.entries()) {
+      const isLatest = index === releases.length - 1;
+      const lines = index === 0 && releases.length > 1 ? changelogPool[4] : changelogPool[(index + product.slug.length) % 4];
+      const existing = await prisma.productVersion.findUnique({ where: { productId_version: { productId: product.id, version } } });
+      if (existing) continue;
+      await prisma.productVersion.create({
+        data: {
+          productId: product.id,
+          version,
+          changelog: lines.map((line) => `- ${line}`).join("\n"),
+          isLatest,
+          releasedAt: new Date(Math.min(start.getTime() + index * 30 * 24 * 60 * 60 * 1000, Date.now() - (releases.length - 1 - index) * 86_400_000)),
+          files: { create: [{ name: `${product.slug}-v${version}.md`, cloudinaryId, size: DEMO_PACKAGE.length }] },
+        },
+      });
+      created++;
+    }
+  });
+  console.log(`🗂  Created ${created} product versions (files point to the private demo package)`);
+}
+
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "");
   console.log(`🎯 Target: ${url.hostname} (schema: ${url.searchParams.get("schema") ?? "public"})`);
@@ -388,6 +467,7 @@ async function main() {
     const users = await seedBuyers();
     await seedOrdersAndReviews(users);
     await seedCommerce();
+    await seedVersions();
     console.log("✅ Marketplace seed complete");
   }
   console.log(`⏱  ${Math.round((Date.now() - startedAt) / 1000)}s`);

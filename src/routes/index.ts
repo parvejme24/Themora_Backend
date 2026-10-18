@@ -17,6 +17,9 @@ import wishlistRoutes from "../module/wishlist/wishlist.route";
 import cartRoutes from "../module/cart/cart.route";
 import couponRoutes from "../module/coupon/coupon.route";
 import subscriptionRoutes from "../module/subscription/subscription.route";
+import downloadRoutes from "../module/download/download.route";
+import licenseRoutes from "../module/license/license.route";
+import refundRoutes from "../module/refund/refund.route";
 
 const router = Router();
 const apiV1Router = Router();
@@ -54,6 +57,11 @@ apiV1Router.use(wishlistRoutes);
 apiV1Router.use(cartRoutes);
 apiV1Router.use(couponRoutes);
 apiV1Router.use(subscriptionRoutes);
+
+// Downloads, licences and refunds
+apiV1Router.use(downloadRoutes);
+apiV1Router.use(licenseRoutes);
+apiV1Router.use(refundRoutes);
 
 // Order routes
 apiV1Router.use(orderRoutes);

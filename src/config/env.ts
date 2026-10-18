@@ -27,6 +27,8 @@ const envSchema = z.object({
   SSLCOMMERZ_SANDBOX: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
   // SSLCommerz charges in BDT; catalogue prices are USD
   USD_TO_BDT_RATE: z.coerce.number().positive().default(122),
+  // Buyers can request a refund this many days after paying
+  REFUND_WINDOW_DAYS: z.coerce.number().int().min(0).default(14),
   VERCEL: z.string().optional(),
 });
 

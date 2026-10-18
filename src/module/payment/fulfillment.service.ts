@@ -76,7 +76,14 @@ export class FulfillmentService {
 
       const licenseIds: string[] = [];
       for (const item of order.items) {
-        if (item.productId) {
+        if (item.upgradesLicenseId) {
+          // Licence upgrade: same key, wider rights; not a new sale of the product
+          await tx.license.update({
+            where: { id: item.upgradesLicenseId },
+            data: { licenseType: "EXTENDED", maxUsage: null, activationLimit: null },
+          });
+          licenseIds.push(item.upgradesLicenseId);
+        } else if (item.productId) {
           const license = await tx.license.create({
             data: {
               orderId: order.id,

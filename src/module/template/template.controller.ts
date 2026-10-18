@@ -2,25 +2,11 @@ import { Request, Response } from "express";
 import { prisma } from "../../config/database";
 import { TemplateService } from "./template.service";
 import { OrderService } from "../order/order.service";
-import { userOwnsProduct } from "../product/product.service";
-import { subscriptionService } from "../subscription/subscription.service";
+import { downloadService } from "../download/download.service";
 
 const templateService = new TemplateService();
 const orderService = new OrderService();
 
-// Buyers of the product, customers with an active one-time plan, or
-// all-access subscribers
-const userHasTemplateAccess = async (userId: string, templateId: string) => {
-  const [owns, planEntitlement, allAccess] = await Promise.all([
-    userOwnsProduct(userId, templateId),
-    prisma.planEntitlement.findFirst({
-      where: { userId, isActive: true, order: { status: "COMPLETED" } },
-      select: { id: true },
-    }),
-    subscriptionService.hasAllAccess(userId),
-  ]);
-  return owns || Boolean(planEntitlement) || allAccess;
-};
 
 // Get all templates
 export const getAllTemplates = async (req: Request, res: Response) => {
@@ -265,55 +251,25 @@ export const deleteTemplate = async (req: Request, res: Response) => {
 };
 
 // Download source file
+// Legacy download route used by the current frontend. Delegates to the
+// download service: same access rules, expiring links, download logging.
 export const downloadSourceFile = async (req: Request, res: Response) => {
   try {
     const { templateId, fileIndex } = req.params;
     const user = (req as any).user;
-
-    if (user?.role !== "ADMIN") {
-      if (!user?.id || !user?.email) return res.status(401).json({ success: false, message: "Authentication required" });
-      await orderService.claimGuestOrders(user.id, user.email);
-      if (!(await userHasTemplateAccess(user.id, templateId))) {
-        return res.status(403).json({ success: false, message: "Purchase this theme to download its files" });
-      }
-    }
-    
-    // Get template to find the source file URL
-    const template = await templateService.getTemplateById(templateId);
-    
-    if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template not found",
-      });
-    }
-
     if (!/^\d+$/.test(fileIndex)) {
       return res.status(400).json({ success: false, message: "Invalid source file index" });
     }
-    const fileIndexNum = Number(fileIndex);
-    if (fileIndexNum >= template.sourceFiles.length) {
-      return res.status(404).json({
-        success: false,
-        message: "Source file not found",
-      });
-    }
+    if (user?.role !== "ADMIN") await orderService.claimGuestOrders(user.id, user.email);
 
-    const fileUrl = template.sourceFiles[fileIndexNum];
-    
-    // Check if it's a Cloudinary raw file (ZIP, etc.)
-    if (fileUrl.includes('cloudinary.com') && fileUrl.includes('/raw/upload/')) {
-      // For Cloudinary raw files, redirect to download URL with proper headers
-      const downloadUrl = fileUrl.replace('/upload/', '/upload/fl_attachment/');
-      return res.status(200).json({ success: true, data: { downloadUrl } });
-    } else {
-      return res.status(200).json({ success: true, data: { downloadUrl: fileUrl } });
-    }
+    const links = await downloadService.createLinks(user, templateId, { ip: req.ip });
+    const file = links.files[Number(fileIndex)];
+    if (!file) return res.status(404).json({ success: false, message: "Source file not found" });
+    return res.status(200).json({ success: true, data: { downloadUrl: file.url, expiresAt: file.expiresAt, version: links.version } });
   } catch (error: any) {
-    console.error("Error downloading source file:", error);
-    return res.status(400).json({
+    return res.status(error?.statusCode ?? 400).json({
       success: false,
-      message: error.message || "Failed to download source file",
+      message: error?.message || "Failed to download source file",
     });
   }
 };

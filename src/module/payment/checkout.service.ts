@@ -184,24 +184,35 @@ export class CheckoutService {
       include: { items: true },
     });
 
+    const recurring = planItems[0]?.billingInterval;
+    return this.startPayment(order, provider, { email, name, phone: input.customer.phone }, {
+      recurring: recurring === "MONTH" ? "month" : recurring === "YEAR" ? "year" : undefined,
+      userId: user?.id,
+      planId: planItems[0]?.pricingPlanId,
+    });
+  }
+
+  // Free orders are fulfilled at once; paid orders get a gateway session
+  private async startPayment(
+    order: { id: string; orderNumber: string; totalAmount: number; items: { title: string; total: number }[] },
+    provider: PaymentProvider,
+    customer: { email: string; name: string; phone?: string },
+    stripeOptions: { recurring?: "month" | "year"; userId?: string; planId?: string } = {}
+  ) {
     const urls = checkoutReturnUrls(order.id);
+    const productTitle = order.items[0]?.title;
 
     if (provider === "FREE") {
       await fulfillmentService.fulfillOrder(order.id, { provider: "FREE", amount: 0, currency: "USD" });
-      return { checkoutUrl: urls.success, orderId: order.id, orderNumber: order.orderNumber, gateway: "free", productTitle: items[0].title };
+      return { checkoutUrl: urls.success, orderId: order.id, orderNumber: order.orderNumber, gateway: "free", productTitle };
     }
 
     let session: GatewaySession;
     try {
-      const recurring = planItems[0]?.billingInterval;
       session =
         provider === "SSLCOMMERZ"
-          ? await sslcommerzGateway.createSession(order, { email, name, phone: input.customer.phone })
-          : await stripeGateway.createSession(order, { email, name }, {
-              recurring: recurring === "MONTH" ? "month" : recurring === "YEAR" ? "year" : undefined,
-              userId: user?.id,
-              planId: planItems[0]?.pricingPlanId,
-            });
+          ? await sslcommerzGateway.createSession(order, customer)
+          : await stripeGateway.createSession(order, { email: customer.email, name: customer.name }, stripeOptions);
     } catch (error) {
       await fulfillmentService.markFailed(order.id, error instanceof Error ? error.message : "Gateway error");
       if (error instanceof AppError) throw error;
@@ -221,8 +232,65 @@ export class CheckoutService {
       gateway: provider.toLowerCase(),
       chargeAmount: session.chargeAmount,
       chargeCurrency: session.chargeCurrency,
-      productTitle: items[0].title,
+      productTitle,
     };
+  }
+
+  /**
+   * Single → Extended licence upgrade: the buyer pays the difference between
+   * the extended price and what they paid. On payment the existing licence
+   * is upgraded in place (same key).
+   */
+  async createUpgradeCheckout(user: CheckoutUser, licenseId: string, gateway: "stripe" | "sslcommerz", phone?: string) {
+    const license = await prisma.license.findFirst({
+      where: { id: licenseId, userId: user.id },
+      include: {
+        template: { select: { id: true, title: true, price: true, salePrice: true, saleEndsAt: true, extendedPrice: true, status: true } },
+        orderItem: { select: { total: true } },
+      },
+    });
+    if (!license) throw AppError.notFound("Licence not found");
+    if (!license.isActive) throw AppError.badRequest("This licence is no longer active");
+    if (license.licenseType === "EXTENDED") throw AppError.badRequest("This licence is already extended");
+    const product = license.template;
+    if (product.extendedPrice == null || product.status !== "PUBLISHED") {
+      throw AppError.badRequest("This product does not offer an extended licence");
+    }
+
+    const paid = license.orderItem?.total ?? activeSalePrice(product) ?? product.price;
+    const price = roundMoney(Math.max(product.extendedPrice - paid, 0));
+    const provider: PaymentProvider = price === 0 ? "FREE" : gateway === "sslcommerz" ? "SSLCOMMERZ" : "STRIPE";
+
+    const order = await prisma.orderInvoice.create({
+      data: {
+        orderNumber: generateOrderNumber(),
+        userId: user.id,
+        templateId: product.id,
+        licenseType: "EXTENDED",
+        status: "PENDING",
+        subtotal: price,
+        totalAmount: price,
+        currency: "USD",
+        provider,
+        paymentMethod: gatewayLabels[provider],
+        customerEmail: user.email,
+        customerName: user.fullName,
+        downloadLinks: [],
+        items: {
+          create: [{
+            productId: product.id,
+            title: `${product.title} (upgrade to Extended licence)`,
+            licenseType: "EXTENDED",
+            unitPrice: price,
+            total: price,
+            upgradesLicenseId: license.id,
+          }],
+        },
+        ...(provider === "FREE" ? { chargeAmount: 0, chargeCurrency: "USD" } : {}),
+      },
+      include: { items: true },
+    });
+    return { ...(await this.startPayment(order, provider, { email: user.email, name: user.fullName, phone })), upgradePrice: price };
   }
 
   // Maps the old single-product request shape onto the cart checkout

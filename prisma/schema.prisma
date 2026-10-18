@@ -48,6 +48,9 @@ model User {
   cart                    Cart?
   subscriptions           Subscription[]
   couponRedemptions       CouponRedemption[]
+  downloadLogs            DownloadLog[]
+  refundRequests          RefundRequest[]      @relation("RefundRequester")
+  resolvedRefunds         RefundRequest[]      @relation("RefundResolver")
 
   @@index([email])
   @@index([role])
@@ -139,6 +142,8 @@ model Template {
   wishlistedBy     WishlistItem[]
   orderItems       OrderItem[]
   cartItems        CartItem[]
+  versions         ProductVersion[]
+  downloadLogs     DownloadLog[]
 
   @@index([categoryId])
   @@index([createdAt])
@@ -296,6 +301,7 @@ model OrderInvoice {
   updatedAt         DateTime          @updatedAt
   licenses          License[]
   items             OrderItem[]
+  refundRequests    RefundRequest[]
   couponRedemption  CouponRedemption?
   coupon            Coupon?           @relation(fields: [couponId], references: [id], onDelete: SetNull)
   subscription      Subscription?     @relation("SubscriptionOrders", fields: [subscriptionId], references: [id], onDelete: SetNull)
@@ -314,24 +320,26 @@ model OrderInvoice {
 }
 
 model License {
-  id              String        @id @default(uuid())
+  id              String              @id @default(uuid())
   orderId         String?
   templateId      String
   userId          String?
   licenseType     LicenseType
-  licenseKey      String        @unique
+  licenseKey      String              @unique
   orderItemId     String?
-  isActive        Boolean       @default(true)
+  isActive        Boolean             @default(true)
   maxUsage        Int?
-  usedCount       Int           @default(0)
+  usedCount       Int                 @default(0)
   expiresAt       DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   activationLimit Int?
-  order           OrderInvoice? @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderItem       OrderItem?    @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
-  template        Template      @relation("TemplateLicenses", fields: [templateId], references: [id], onDelete: Cascade)
-  user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activations     LicenseActivation[]
+  upgradeItems    OrderItem[]         @relation("LicenseUpgrades")
+  order           OrderInvoice?       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem       OrderItem?          @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  template        Template            @relation("TemplateLicenses", fields: [templateId], references: [id], onDelete: Cascade)
+  user            User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([templateId])
@@ -342,20 +350,22 @@ model License {
 }
 
 model OrderItem {
-  id            String       @id @default(uuid())
-  orderId       String
-  productId     String?
-  pricingPlanId String?
-  title         String
-  licenseType   LicenseType  @default(SINGLE)
-  unitPrice     Float
-  discount      Float        @default(0)
-  total         Float
-  createdAt     DateTime     @default(now())
-  order         OrderInvoice @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product       Template?    @relation(fields: [productId], references: [id], onDelete: SetNull)
-  pricingPlan   PricingPlan? @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
-  licenses      License[]
+  id                String       @id @default(uuid())
+  orderId           String
+  productId         String?
+  pricingPlanId     String?
+  title             String
+  licenseType       LicenseType  @default(SINGLE)
+  unitPrice         Float
+  discount          Float        @default(0)
+  total             Float
+  upgradesLicenseId String?
+  createdAt         DateTime     @default(now())
+  order             OrderInvoice @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Template?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  pricingPlan       PricingPlan? @relation(fields: [pricingPlanId], references: [id], onDelete: SetNull)
+  licenses          License[]
+  upgradesLicense   License?     @relation("LicenseUpgrades", fields: [upgradesLicenseId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])
@@ -452,6 +462,88 @@ model Subscription {
   @@index([userId, status])
   @@index([currentPeriodEnd])
   @@map("subscriptions")
+}
+
+model ProductVersion {
+  id         String        @id @default(uuid())
+  productId  String
+  version    String
+  changelog  String        @default("")
+  isLatest   Boolean       @default(false)
+  releasedAt DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+  product    Template      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  files      ProductFile[]
+  downloads  DownloadLog[]
+
+  @@unique([productId, version])
+  @@index([productId, isLatest])
+  @@map("product_versions")
+}
+
+model ProductFile {
+  id           String         @id @default(uuid())
+  versionId    String
+  name         String
+  cloudinaryId String?
+  url          String?
+  size         Int?
+  sortOrder    Int            @default(0)
+  version      ProductVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@map("product_files")
+}
+
+model DownloadLog {
+  id        String          @id @default(uuid())
+  userId    String
+  productId String
+  versionId String?
+  fileId    String?
+  ip        String?
+  createdAt DateTime        @default(now())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Template        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version   ProductVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([productId])
+  @@map("download_logs")
+}
+
+model LicenseActivation {
+  id        String   @id @default(uuid())
+  licenseId String
+  domain    String
+  createdAt DateTime @default(now())
+  license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@unique([licenseId, domain])
+  @@map("license_activations")
+}
+
+model RefundRequest {
+  id               String              @id @default(uuid())
+  orderId          String
+  userId           String
+  reason           String
+  status           RefundRequestStatus @default(REQUESTED)
+  adminNote        String?
+  amount           Float
+  providerRefundId String?
+  failureReason    String?
+  resolvedById     String?
+  resolvedAt       DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  order            OrderInvoice        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user             User                @relation("RefundRequester", fields: [userId], references: [id], onDelete: Cascade)
+  resolvedBy       User?               @relation("RefundResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([orderId])
+  @@map("refund_requests")
 }
 
 model WebhookEvent {
@@ -668,6 +760,13 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELLED
   EXPIRED
+}
+
+enum RefundRequestStatus {
+  REQUESTED
+  REFUNDED
+  REJECTED
+  FAILED
 }
 
 enum PaymentProvider {

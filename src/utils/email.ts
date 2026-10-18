@@ -79,3 +79,45 @@ export async function sendContactReplyEmail(to: string, name: string, subject: s
   });
 }
 
+
+const frontendUrl = () => (process.env.FRONTEND_URL || "https://themora.vercel.app").replace(/\/+$/, "");
+
+export async function sendProductUpdateEmail(
+  to: string,
+  name: string,
+  product: { title: string; slug: string },
+  version: string,
+  changelog: string
+): Promise<void> {
+  const link = `${frontendUrl()}/dashboard/downloads`;
+  const summary = changelog.split("\n").filter(Boolean).slice(0, 8);
+  await transporter.sendMail({
+    from: EMAIL_FROM || SMTP_USER,
+    to,
+    subject: `${product.title} ${version} is available`,
+    text: `Hi ${name},\n\n${product.title} ${version} is ready to download.\n\n${summary.join("\n")}\n\nDownload it from ${link}`,
+    html: `<p>Hi ${escapeHtml(name)},</p><p><b>${escapeHtml(product.title)} ${escapeHtml(version)}</b> is ready to download.</p>${
+      summary.length ? `<ul>${summary.map((line) => `<li>${escapeHtml(line.replace(/^[-*]\s*/, ""))}</li>`).join("")}</ul>` : ""
+    }<p><a href="${link}">Download the update</a></p>`,
+  });
+}
+
+export async function sendRefundDecisionEmail(
+  to: string,
+  name: string,
+  orderNumber: string,
+  approved: boolean,
+  note?: string | null
+): Promise<void> {
+  const subject = approved ? `Refund approved for order ${orderNumber}` : `Update on your refund request for order ${orderNumber}`;
+  const message = approved
+    ? "Your refund has been approved and sent to your original payment method. It can take 5–10 business days to appear."
+    : "We reviewed your refund request and are unable to approve it.";
+  await transporter.sendMail({
+    from: EMAIL_FROM || SMTP_USER,
+    to,
+    subject,
+    text: `Hi ${name},\n\n${message}${note ? `\n\nNote from our team: ${note}` : ""}`,
+    html: `<p>Hi ${escapeHtml(name)},</p><p>${message}</p>${note ? `<p><b>Note from our team:</b> ${escapeHtml(note)}</p>` : ""}`,
+  });
+}

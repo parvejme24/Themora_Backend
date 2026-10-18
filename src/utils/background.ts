@@ -4,7 +4,8 @@ import { waitUntil } from "@vercel/functions";
 // function alive until the promise settles; elsewhere it simply runs.
 // Failures are logged, never thrown.
 export const runInBackground = (label: string, work: () => Promise<unknown>) => {
-  const promise = work().catch((error) => {
+  // Promise.resolve().then also catches synchronous throws and non-promise returns
+  const promise = Promise.resolve().then(work).catch((error) => {
     console.error(`Background task "${label}" failed:`, error);
   });
   try {
