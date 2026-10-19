@@ -139,6 +139,11 @@ describe("CORS", () => {
     expect(await allowOrigin("https://evil-shop.vercel.app")).toBeUndefined();
     expect(await allowOrigin("https://attacker.example")).toBeUndefined();
   });
+
+  it("exposes Content-Disposition so the frontend can name downloads", async () => {
+    const res = await request(app).get("/health").set("Origin", "https://themora.vercel.app");
+    expect(res.headers["access-control-expose-headers"]).toBe("Content-Disposition");
+  });
 });
 
 describe("daily cron", () => {

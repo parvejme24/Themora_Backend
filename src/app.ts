@@ -71,6 +71,8 @@ app.use(
       "Access-Control-Allow-Origin",
       "x-nextauth-secret",
     ],
+    // Lets the browser read the file name of downloads (e.g. the product CSV export)
+    exposedHeaders: ["Content-Disposition"],
   })
 );
 
