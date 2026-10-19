@@ -63,6 +63,12 @@ export class CartService {
   }
 
   async addItem(user: CartUser, productId: string, licenseType: LicenseType) {
+    await this.putItem(user, productId, licenseType);
+    return this.get(user);
+  }
+
+  // Validates and saves one item without re-pricing the cart (callers price it once)
+  private async putItem(user: CartUser, productId: string, licenseType: LicenseType) {
     const product = await prisma.template.findFirst({
       where: { id: productId, status: "PUBLISHED" },
       select: { id: true, extendedPrice: true, isFree: true },
@@ -81,7 +87,6 @@ export class CartService {
       create: { cartId: cart.id, productId, licenseType },
       update: { licenseType },
     });
-    return this.get(user);
   }
 
   async removeItem(user: CartUser, productId: string) {
@@ -101,7 +106,7 @@ export class CartService {
     const skipped: string[] = [];
     for (const item of items) {
       try {
-        await this.addItem(user, item.productId, item.licenseType);
+        await this.putItem(user, item.productId, item.licenseType);
       } catch (error) {
         if (!(error instanceof AppError)) throw error;
         skipped.push(item.productId);
