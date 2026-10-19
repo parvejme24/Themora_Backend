@@ -22,6 +22,8 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { sendResponse } from '../../utils/sendResponse';
 import { validateRequest } from '../../utils/validateRequest';
 import { myOrdersService } from './my-orders.service';
+import { adminOrdersService } from './admin-orders.service';
+import { authorize } from '../../middleware/permissions';
 
 const router = Router();
 
@@ -52,6 +54,49 @@ router.get(
 );
 
 // Top selling route (must be before /orders/:id)
+// Staff order management (support permission, same as the refund queue)
+export const adminOrderQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  status: z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED']).optional(),
+  provider: z.enum(['STRIPE', 'SSLCOMMERZ', 'FREE', 'MANUAL']).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export const adminRefundOrderSchema = z.object({
+  reason: z.string().trim().min(5, 'Say why the order is refunded').max(1000),
+});
+const orderIdParam = z.object({ id: z.string().uuid('Invalid order ID') });
+
+router.get(
+  '/admin/orders',
+  authorize('support'),
+  validateRequest({ query: adminOrderQuerySchema }),
+  asyncHandler(async (req, res) => {
+    const { orders, counts, pagination } = await adminOrdersService.list((req as any).validatedQuery);
+    res.json({ success: true, message: 'Orders fetched', data: orders, counts, pagination });
+  })
+);
+router.get(
+  '/admin/orders/:id',
+  authorize('support'),
+  validateRequest({ params: orderIdParam }),
+  asyncHandler(async (req, res) => {
+    sendResponse(res, { message: 'Order fetched', data: await adminOrdersService.get(req.params.id) });
+  })
+);
+router.post(
+  '/admin/orders/:id/refund',
+  authorize('support'),
+  validateRequest({ params: orderIdParam, body: adminRefundOrderSchema }),
+  asyncHandler(async (req, res) => {
+    const staff = (req as any).user as { id: string };
+    const refund = await adminOrdersService.refund(req.params.id, staff.id, (req as any).validatedData.reason);
+    sendResponse(res, { message: 'Order refunded', data: refund });
+  })
+);
+
 router.get('/orders/top-selling', cacheResponse(30), optionalAuth, getTopSellingTemplates);
 
 // Admin routes

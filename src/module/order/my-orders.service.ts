@@ -12,7 +12,7 @@ interface Buyer {
 
 const productSelect = { id: true, slug: true, title: true, imageUrl: true } as const;
 
-const myOrderInclude = {
+export const myOrderInclude = {
   items: {
     orderBy: { createdAt: "asc" },
     select: {
@@ -44,7 +44,7 @@ const ownedBy = (buyer: Buyer): Prisma.OrderInvoiceWhereInput => ({
 });
 
 // Shape for the buyer dashboard: line items, refund window and the latest refund request
-const toMyOrder = (order: MyOrderRow) => {
+export const toMyOrder = (order: MyOrderRow) => {
   const paidAt = order.paidAt ?? (order.status === "COMPLETED" ? order.createdAt : null);
   const refundableUntil = paidAt ? new Date(paidAt.getTime() + env.REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1000) : null;
   const latestRefund = order.refundRequests[0] ?? null;

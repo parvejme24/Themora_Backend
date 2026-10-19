@@ -15,6 +15,7 @@ import {
   updateProductSchema,
 } from "../module/product/product.validation";
 import { approveSchema, rejectSchema, requestSchema } from "../module/refund/refund.route";
+import { adminOrderQuerySchema, adminRefundOrderSchema } from "../module/order/order.route";
 import { applySchema, clickSchema } from "../module/affiliate/affiliate.route";
 import { createTicketSchema, replySchema } from "../module/ticket/ticket.route";
 import { preferencesSchema } from "../module/notification/notification.route";
@@ -138,6 +139,9 @@ const endpoints: Endpoint[] = [
   { method: "post", path: "/admin/coupons", tag: "Admin", summary: "Create a coupon", access: "admin", body: createCouponSchema },
   { method: "get", path: "/admin/reviews", tag: "Admin", summary: "Reviews for moderation", access: "admin" },
   { method: "get", path: "/admin/subscriptions", tag: "Admin", summary: "Subscriptions", access: "admin" },
+  { method: "get", path: "/admin/orders", tag: "Admin", summary: "All orders with line items, filters and per-status counts", access: "admin", query: adminOrderQuerySchema },
+  { method: "get", path: "/admin/orders/{id}", tag: "Admin", summary: "Order with items, licences, payment and refund history", access: "admin" },
+  { method: "post", path: "/admin/orders/{id}/refund", tag: "Admin", summary: "Refund an order through the gateway (staff)", access: "admin", body: adminRefundOrderSchema },
   { method: "get", path: "/admin/refund-requests", tag: "Admin", summary: "Refund requests", access: "admin" },
   { method: "post", path: "/admin/refund-requests/{id}/approve", tag: "Admin", summary: "Refund through the gateway and revoke access", access: "admin", body: approveSchema },
   { method: "post", path: "/admin/refund-requests/{id}/reject", tag: "Admin", summary: "Reject with a note to the customer", access: "admin", body: rejectSchema },
