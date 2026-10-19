@@ -18,6 +18,7 @@ import { applySchema, clickSchema } from "../module/affiliate/affiliate.route";
 import { createTicketSchema, replySchema } from "../module/ticket/ticket.route";
 import { preferencesSchema } from "../module/notification/notification.route";
 import { challengeSchema } from "../module/two-factor/two-factor.route";
+import { myOrdersQuery } from "../module/order/order.route";
 
 type Access = "public" | "user" | "admin";
 
@@ -76,6 +77,8 @@ const endpoints: Endpoint[] = [
   // Buyer account
   { method: "get", path: "/user/orders", tag: "Account", summary: "My orders", access: "user" },
   { method: "get", path: "/me/downloads", tag: "Account", summary: "Products I can download, with latest version", access: "user" },
+  { method: "get", path: "/me/orders", tag: "Account", summary: "My orders with items, licences and refund status", access: "user", query: myOrdersQuery },
+  { method: "get", path: "/me/orders/{id}", tag: "Account", summary: "One of my orders (invoice view)", access: "user" },
   { method: "post", path: "/downloads/{productId}", tag: "Account", summary: "Signed download links (valid 5 minutes)", access: "user", body: downloadRequestSchema },
   { method: "get", path: "/me/licenses", tag: "Account", summary: "My licences, activations and upgrade prices", access: "user" },
   { method: "post", path: "/me/licenses/{id}/upgrade", tag: "Account", summary: "Upgrade Single → Extended for the price difference", access: "user", body: upgradeSchema },

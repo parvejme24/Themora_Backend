@@ -311,3 +311,57 @@ describe("refunds", () => {
     expect((await prisma.license.findFirst({ where: { orderId: order.id } }))?.isActive).toBe(true);
   });
 });
+
+describe("buyer orders", () => {
+  it("lists my orders with items, licences and refund eligibility", async () => {
+    const buyer = await createTestUser();
+    const product = await createProduct();
+    const { order, license } = await buy(buyer.user, product);
+    const { order: oldOrder } = await buy(buyer.user, await createProduct(), { paidDaysAgo: 30 });
+    await request(app)
+      .post(`/api/v1/me/orders/${order.id}/refund-request`)
+      .set(buyer.authHeader)
+      .send({ reason: "The template does not support RTL layouts as I expected." });
+
+    const res = await request(app).get("/api/v1/me/orders").set(buyer.authHeader);
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.total).toBe(2);
+    const recent = res.body.data.find((o: any) => o.id === order.id);
+    expect(recent.items[0]).toMatchObject({ title: `${product.title} (Single licence)`, product: { id: product.id } });
+    expect(recent.licenses[0].licenseKey).toBe(license.licenseKey);
+    // An open request blocks a second one
+    expect(recent.refundRequest.status).toBe("REQUESTED");
+    expect(recent.canRequestRefund).toBe(false);
+    const old = res.body.data.find((o: any) => o.id === oldOrder.id);
+    expect(old.canRequestRefund).toBe(false);
+    expect(new Date(old.refundableUntil).getTime()).toBeLessThan(Date.now());
+
+    const one = await request(app).get(`/api/v1/me/orders/${order.id}`).set(buyer.authHeader);
+    expect(one.status).toBe(200);
+    expect(one.body.data.orderNumber).toBe(order.orderNumber);
+  });
+
+  it("shows legacy single-product orders as one line", async () => {
+    const buyer = await createTestUser();
+    const product = await createProduct();
+    await prisma.orderInvoice.create({
+      data: { userId: buyer.user.id, templateId: product.id, orderNumber: "LEGACY-1", status: "COMPLETED", totalAmount: 49, licenseType: "SINGLE", customerEmail: buyer.user.email },
+    });
+    const res = await request(app).get("/api/v1/me/orders").set(buyer.authHeader);
+    expect(res.body.data[0].items).toHaveLength(1);
+    expect(res.body.data[0].items[0]).toMatchObject({ title: product.title, total: 49, product: { id: product.id } });
+  });
+
+  it("never shows full order details to anonymous visitors or other customers", async () => {
+    const buyer = await createTestUser();
+    const stranger = await createTestUser();
+    const support = await createTestUser({ role: "SUPPORT" });
+    const { order } = await buy(buyer.user, await createProduct());
+
+    expect((await request(app).get(`/api/v1/orders/${order.id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/v1/orders/${order.id}`).set(stranger.authHeader)).status).toBe(404);
+    expect((await request(app).get(`/api/v1/me/orders/${order.id}`).set(stranger.authHeader)).status).toBe(404);
+    expect((await request(app).get(`/api/v1/orders/${order.id}`).set(buyer.authHeader)).status).toBe(200);
+    expect((await request(app).get(`/api/v1/orders/${order.id}`).set(support.authHeader)).status).toBe(200);
+  });
+});

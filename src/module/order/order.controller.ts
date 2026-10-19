@@ -1,3 +1,4 @@
+import { hasPermission } from "../../middleware/permissions";
 import { Request, Response } from "express";
 import { OrderService } from "./order.service";
 import { checkoutService } from "../payment/checkout.service";
@@ -53,7 +54,13 @@ export const getOrderById = async (req: Request, res: Response) => {
       });
     }
 
-    if (user && user.role !== "ADMIN" && order.userId && order.userId !== user.id && order.customerEmail?.toLowerCase() !== user.email?.toLowerCase()) {
+    // Full orders include customer details and licence keys: only the buyer and support staff see them.
+    // The public success page uses /payments/orders/:id/status instead.
+    const isOwner =
+      !!user &&
+      (order.userId === user.id ||
+        (!order.userId && order.customerEmail?.toLowerCase() === user.email?.toLowerCase()));
+    if (!user || (!isOwner && !hasPermission(user.role, "support"))) {
       return res.status(404).json({ success: false, message: "Order not found", data: null });
     }
 
