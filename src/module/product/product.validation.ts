@@ -133,6 +133,11 @@ export const endSaleSchema = z
   })
   .refine((data) => Boolean(data.productIds?.length) !== Boolean(data.categoryId), "Choose either productIds or a categoryId");
 
+export const importProductsSchema = z.object({
+  csv: z.string().min(1, "The CSV is empty").max(5_000_000, "The CSV is larger than 5 MB"),
+  dryRun: z.boolean().default(false),
+});
+
 export type ProductQuery = z.infer<typeof adminProductQuerySchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = Partial<CreateProductInput>;

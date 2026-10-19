@@ -9,6 +9,8 @@ import {
   createProduct,
   deleteProduct,
   endSale,
+  exportProductsCsv,
+  importProductsCsv,
   startSale,
   getProduct,
   getProductFacets,
@@ -21,6 +23,7 @@ import {
   adminProductQuerySchema,
   createProductSchema,
   endSaleSchema,
+  importProductsSchema,
   saleSchema,
   productIdParamSchema,
   productQuerySchema,
@@ -45,6 +48,18 @@ router.get(
 
 // Admin
 router.get("/admin/products", authorize("catalog:write"), validateRequest({ query: adminProductQuerySchema }), adminListProducts);
+router.get(
+  "/admin/products/export",
+  authorize("catalog:write"),
+  validateRequest({ query: adminProductQuerySchema }),
+  exportProductsCsv
+);
+router.post(
+  "/admin/products/import",
+  authorize("catalog:write"),
+  validateRequest({ body: importProductsSchema }),
+  importProductsCsv
+);
 router.get("/admin/products/:id", authorize("catalog:write"), validateRequest({ params: productIdParamSchema }), adminGetProduct);
 router.post("/admin/products", authorize("catalog:write"), validateRequest({ body: createProductSchema }), createProduct);
 router.patch(

@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { runInBackground } from "../../utils/background";
 import { sendResponse } from "../../utils/sendResponse";
 import { productService } from "./product.service";
+import { productCsvService } from "./product-csv.service";
 import { analyticsService } from "../analytics/analytics.service";
 
 const clearProductCaches = () => {
@@ -53,6 +54,26 @@ export const adminListProducts = asyncHandler(async (req: Request, res: Response
 export const adminGetProduct = asyncHandler(async (req: Request, res: Response) => {
   const product = await productService.getForAdmin(req.params.id);
   sendResponse(res, { message: "Product fetched successfully", data: product });
+});
+
+export const exportProductsCsv = asyncHandler(async (req: Request, res: Response) => {
+  const csv = await productCsvService.exportCsv((req as any).validatedQuery);
+  const date = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="themora-products-${date}.csv"`);
+  res.send(csv);
+});
+
+export const importProductsCsv = asyncHandler(async (req: Request, res: Response) => {
+  const { csv, dryRun } = (req as any).validatedData;
+  const result = await productCsvService.importCsv(csv, { dryRun });
+  if (!dryRun) clearProductCaches();
+  sendResponse(res, {
+    message: dryRun
+      ? `Ready to create ${result.created} and update ${result.updated} products`
+      : `Created ${result.created} and updated ${result.updated} products`,
+    data: result,
+  });
 });
 
 export const createProduct = asyncHandler(async (req: Request, res: Response) => {

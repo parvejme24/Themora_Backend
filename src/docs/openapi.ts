@@ -8,6 +8,7 @@ import { checkoutSchema, legacyCheckoutSchema, stripeConfirmSchema } from "../mo
 import { createReviewSchema, reviewQuerySchema } from "../module/product-review/product-review.validation";
 import {
   adminProductQuerySchema,
+  importProductsSchema,
   createProductSchema,
   productQuerySchema,
   saleSchema,
@@ -125,6 +126,8 @@ const endpoints: Endpoint[] = [
 
   // Admin
   { method: "get", path: "/admin/products", tag: "Admin", summary: "All products including drafts", access: "admin", query: adminProductQuerySchema },
+  { method: "get", path: "/admin/products/export", tag: "Admin", summary: "Download products as CSV (same filters as the list)", access: "admin", query: adminProductQuerySchema },
+  { method: "post", path: "/admin/products/import", tag: "Admin", summary: "Create or update products from CSV (dryRun to preview)", access: "admin", body: importProductsSchema },
   { method: "post", path: "/admin/products", tag: "Admin", summary: "Create a product", access: "admin", body: createProductSchema },
   { method: "patch", path: "/admin/products/{id}", tag: "Admin", summary: "Update a product", access: "admin", body: updateProductSchema },
   { method: "delete", path: "/admin/products/{id}", tag: "Admin", summary: "Delete (or archive if it has orders)", access: "admin" },

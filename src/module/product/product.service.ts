@@ -52,7 +52,7 @@ const sortToOrderBy: Record<ProductQuery["sort"], Prisma.TemplateOrderByWithRela
   downloads: [{ downloads: "desc" }],
 };
 
-const buildWhere = (query: ProductQuery, { publicOnly }: { publicOnly: boolean }): Prisma.TemplateWhereInput => {
+export const buildWhere = (query: ProductQuery, { publicOnly }: { publicOnly: boolean }): Prisma.TemplateWhereInput => {
   const and: Prisma.TemplateWhereInput[] = [];
 
   if (publicOnly) and.push({ status: "PUBLISHED" });
