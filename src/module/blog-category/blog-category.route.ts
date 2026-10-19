@@ -8,7 +8,7 @@ import {
 } from "./blog-category.controller";
 import { uploadImageMemory, handleUploadError } from "../../middleware/cloudinary-upload";
 
-import { authenticateAdminAndCheckStatus } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 
 const router = Router();
 
@@ -16,7 +16,7 @@ router.get("/blog-categories", getAllBlogCategories);
 router.get("/blog-categories/:id", getBlogCategoryById);
 router.post(
   "/blog-categories",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   (req: any, res: any, next: any) => {
     (uploadImageMemory as any)(req, res, (err: any) => {
       if (err) return handleUploadError(err, req, res, next);
@@ -27,7 +27,7 @@ router.post(
 );
 router.put(
   "/blog-categories/:id",
-  authenticateAdminAndCheckStatus,
+  authorize("marketing"),
   (req: any, res: any, next: any) => {
     (uploadImageMemory as any)(req, res, (err: any) => {
       if (err) return handleUploadError(err, req, res, next);
@@ -36,6 +36,6 @@ router.put(
   },
   updateBlogCategory
 );
-router.delete("/blog-categories/:id", authenticateAdminAndCheckStatus, deleteBlogCategory);
+router.delete("/blog-categories/:id", authorize("marketing"), deleteBlogCategory);
 
 export default router;

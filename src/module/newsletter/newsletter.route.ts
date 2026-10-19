@@ -5,10 +5,8 @@ import {
   deleteNewsletterSubscriber,
   newsletterStats,
 } from "./newsletter.controller";
-import {
-  authenticateAdminAndCheckStatus,
-  optionalAuth,
-} from "../../middleware/authMiddleware";
+import { optionalAuth } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 
 const router = Router();
 
@@ -16,12 +14,12 @@ const router = Router();
 router.post("/newsletter", optionalAuth, subscribeNewsletter);
 
 // Get all newsletter subscribers (Admin)
-router.get("/newsletter", authenticateAdminAndCheckStatus, getAllNewsletterSubscribers);
+router.get("/newsletter", authorize("marketing"), getAllNewsletterSubscribers);
 
 // Get newsletter statistics (daily, weekly, monthly, yearly) (Admin)
-router.get("/newsletter/stats", authenticateAdminAndCheckStatus, newsletterStats);
+router.get("/newsletter/stats", authorize("marketing"), newsletterStats);
 
 // Delete newsletter subscriber by ID (Admin)
-router.delete("/newsletter/:id", authenticateAdminAndCheckStatus, deleteNewsletterSubscriber);
+router.delete("/newsletter/:id", authorize("marketing"), deleteNewsletterSubscriber);
 
 export default router;

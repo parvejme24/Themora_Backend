@@ -8,7 +8,7 @@ import {
   getTemplateCategoryStats,
 } from './template-category.controller';
 import { uploadCategoryImageCloudinary, handleUploadError } from '../../middleware/cloudinary-upload';
-import { authenticateAdminAndCheckStatus } from '../../middleware/authMiddleware';
+import { authorize } from '../../middleware/permissions';
 import {
   validateCreateTemplateCategory,
   validateUpdateTemplateCategory,
@@ -26,7 +26,7 @@ router.get('/template-categories/stats', cacheResponse(60), getTemplateCategoryS
 router.get('/template-categories/:id', cacheResponse(60), validateTemplateCategoryId, getTemplateCategoryById);
 
 // Admin routes
-router.post('/template-categories', authenticateAdminAndCheckStatus, (req: any, res: any, next: any) => {
+router.post('/template-categories', authorize("catalog:write"), (req: any, res: any, next: any) => {
   // Check if there's a file upload
   if (req.headers['content-type']?.includes('multipart/form-data')) {
     (uploadCategoryImageCloudinary as any)(req, res, (err: any) => {
@@ -39,7 +39,7 @@ router.post('/template-categories', authenticateAdminAndCheckStatus, (req: any, 
   }
 }, validateCreateTemplateCategory, createTemplateCategory);
 
-router.put('/template-categories/:id', authenticateAdminAndCheckStatus, validateTemplateCategoryId, (req: any, res: any, next: any) => {
+router.put('/template-categories/:id', authorize("catalog:write"), validateTemplateCategoryId, (req: any, res: any, next: any) => {
   // Check if there's a file upload
   if (req.headers['content-type']?.includes('multipart/form-data')) {
     (uploadCategoryImageCloudinary as any)(req, res, (err: any) => {
@@ -52,6 +52,6 @@ router.put('/template-categories/:id', authenticateAdminAndCheckStatus, validate
   }
 }, validateUpdateTemplateCategory, updateTemplateCategory);
 
-router.delete('/template-categories/:id', authenticateAdminAndCheckStatus, validateTemplateCategoryId, deleteTemplateCategory);
+router.delete('/template-categories/:id', authorize("catalog:write"), validateTemplateCategoryId, deleteTemplateCategory);
 
 export default router;

@@ -27,7 +27,8 @@ import {
   validateBlogReaction,
 } from "./blog.validate";
 import { uploadBlogImageCloudinary, handleUploadError } from "../../middleware/cloudinary-upload";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus, optionalAuth } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus, optionalAuth } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 
 const router = Router();
 
@@ -35,8 +36,8 @@ const router = Router();
 // Get blogs
 router.get("/blogs", optionalAuth, validateBlogQuery, getAllBlogs);
 router.get("/blogs/published", validateBlogQuery, getPublishedBlogs);
-router.get("/blogs/drafts", authenticateAdminAndCheckStatus, validateBlogQuery, getDraftBlogs);
-router.get("/blogs/stats", authenticateAdminAndCheckStatus, getBlogStats);
+router.get("/blogs/drafts", authorize("marketing"), validateBlogQuery, getDraftBlogs);
+router.get("/blogs/stats", authorize("marketing"), getBlogStats);
 router.get("/blogs/category/:categoryId", optionalAuth, validateCategoryId, validateBlogQuery, getBlogsByCategory);
 router.get("/blogs/author/:authorId", optionalAuth, validateAuthorId, validateBlogQuery, getBlogsByAuthor);
 router.get("/blogs/:id", optionalAuth, validateBlogId, getBlogById);
@@ -65,6 +66,6 @@ router.get("/blogs/:id/reactions", validateBlogId, getBlogReactions);
 router.get("/blogs/:id/reactions/user", authenticateAndCheckStatus, validateBlogId, getUserReaction);
 
 // Blog status management
-router.patch("/blogs/:id/toggle-publish", authenticateAdminAndCheckStatus, validateBlogId, togglePublish);
+router.patch("/blogs/:id/toggle-publish", authorize("marketing"), validateBlogId, togglePublish);
 
 export default router;

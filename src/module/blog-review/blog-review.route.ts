@@ -19,7 +19,8 @@ import {
   validateBlogIdParam,
   validateBlogReviewReplyId,
 } from "./blog-review.validate";
-import { authenticateAdminAndCheckStatus, authenticateAndCheckStatus, optionalAuth } from "../../middleware/authMiddleware";
+import { authenticateAndCheckStatus, optionalAuth } from "../../middleware/authMiddleware";
+import { authorize } from "../../middleware/permissions";
 
 const router = Router();
 
@@ -33,11 +34,11 @@ router.put("/blog-reviews/:reviewId", authenticateAndCheckStatus, validateBlogRe
 router.delete("/blog-reviews/:reviewId", authenticateAndCheckStatus, validateBlogReviewId, deleteBlogReview);
 
 // Admin routes
-router.post("/blog-reviews/reply/:reviewId", authenticateAdminAndCheckStatus, validateBlogReviewId, validateCreateBlogReviewReply, createBlogReviewReply);
-router.patch("/blog-reviews/:reviewId/hide", authenticateAdminAndCheckStatus, validateBlogReviewId, hideBlogReview);
-router.patch("/blog-reviews/:reviewId/unhide", authenticateAdminAndCheckStatus, validateBlogReviewId, unhideBlogReview);
-router.delete("/blog-reviews/blog/:blogId/all", authenticateAdminAndCheckStatus, validateBlogIdParam, deleteAllReviewsByBlogId);
-router.delete("/blog-reviews/reply/:replyId", authenticateAdminAndCheckStatus, validateBlogReviewReplyId, deleteBlogReviewReply);
+router.post("/blog-reviews/reply/:reviewId", authorize("reviews:moderate"), validateBlogReviewId, validateCreateBlogReviewReply, createBlogReviewReply);
+router.patch("/blog-reviews/:reviewId/hide", authorize("reviews:moderate"), validateBlogReviewId, hideBlogReview);
+router.patch("/blog-reviews/:reviewId/unhide", authorize("reviews:moderate"), validateBlogReviewId, unhideBlogReview);
+router.delete("/blog-reviews/blog/:blogId/all", authorize("reviews:moderate"), validateBlogIdParam, deleteAllReviewsByBlogId);
+router.delete("/blog-reviews/reply/:replyId", authorize("reviews:moderate"), validateBlogReviewReplyId, deleteBlogReviewReply);
 
 export default router;
 

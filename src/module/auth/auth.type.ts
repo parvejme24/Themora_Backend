@@ -63,7 +63,7 @@ export const userQuerySchema = z.object({
   page: z.string().transform(Number).pipe(z.number().min(1)).optional().default(1),
   limit: z.string().transform(Number).pipe(z.number().min(1).max(100)).optional().default(10),
   search: z.string().optional(),
-  role: z.enum(['ADMIN', 'USER']).optional(),
+  role: z.enum(['ADMIN', 'EDITOR', 'SUPPORT', 'MODERATOR', 'USER']).optional(),
   isBanned: z.string().transform(val => val === 'true').optional(),
   isTrashed: z.string().transform(val => val === 'true').optional(),
   isLoggedIn: z.string().transform(val => val === 'true').optional(),

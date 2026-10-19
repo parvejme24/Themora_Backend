@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { blogReviewService } from "./blog-review.service";
 import { IBlogReviewQuery } from "./blog-review.interface";
+import { hasPermission } from "../../middleware/permissions";
 
 // Create blog review
 export const createBlogReview = async (req: Request, res: Response) => {
@@ -89,7 +90,7 @@ export const getBlogReviews = async (req: Request, res: Response) => {
   try {
     const query: IBlogReviewQuery = (req as any).validatedQuery || req.query;
     const user = (req as any).user;
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdmin = hasPermission(user?.role, "reviews:moderate");
     const result = await blogReviewService.getBlogReviews(query, isAdmin);
 
     return res.status(200).json({
@@ -114,7 +115,7 @@ export const getReviewsByBlogId = async (req: Request, res: Response) => {
     const { blogId } = req.params;
     const query: IBlogReviewQuery = (req as any).validatedQuery || req.query;
     const user = (req as any).user;
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdmin = hasPermission(user?.role, "reviews:moderate");
     
     const result = await blogReviewService.getReviewsByBlogId(blogId, query, isAdmin);
 
@@ -139,7 +140,7 @@ export const getBlogReviewById = async (req: Request, res: Response) => {
   try {
     const { reviewId } = req.params;
     const user = (req as any).user;
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdmin = hasPermission(user?.role, "reviews:moderate");
     
     const review = await blogReviewService.getBlogReviewById(reviewId);
     
@@ -202,7 +203,7 @@ export const updateBlogReview = async (req: Request, res: Response) => {
 
     // Check if user is owner or admin
     const isOwner = review.userId === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = hasPermission(user.role, "reviews:moderate");
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({
@@ -300,7 +301,7 @@ export const deleteBlogReview = async (req: Request, res: Response) => {
 
     // Check if user is owner or admin
     const isOwner = review.userId === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = hasPermission(user.role, "reviews:moderate");
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({

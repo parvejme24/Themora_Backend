@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { contactService } from "./contact.service";
 import { IContactQuery } from "./contact.interface";
 import { sendContactNotification, sendContactReplyEmail } from "../../utils/email";
+import { hasPermission } from "../../middleware/permissions";
 
 // Get all contacts (Admin/Super Admin only)
 export const getAllContacts = async (req: Request, res: Response) => {
@@ -41,7 +42,7 @@ export const getContactById = async (req: Request, res: Response) => {
     }
 
     const user = (req as any).user;
-    if (user?.role !== "ADMIN" && contact.userId !== user?.id && contact.email.toLowerCase() !== user?.email?.toLowerCase()) {
+    if (!hasPermission(user?.role, "support") && contact.userId !== user?.id && contact.email.toLowerCase() !== user?.email?.toLowerCase()) {
       return res.status(404).json({ success: false, message: "Contact not found", data: null });
     }
     
@@ -65,7 +66,7 @@ export const getContactsByUserEmail = async (req: Request, res: Response) => {
   try {
     const { userEmail } = req.params;
     const user = (req as any).user;
-    if (user?.role !== "ADMIN" && user?.email?.toLowerCase() !== userEmail.toLowerCase()) {
+    if (!hasPermission(user?.role, "support") && user?.email?.toLowerCase() !== userEmail.toLowerCase()) {
       return res.status(403).json({ success: false, message: "You can only view contact requests for your own account" });
     }
     

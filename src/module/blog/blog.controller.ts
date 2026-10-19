@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { blogService } from "./blog.service";
 import { uploadBufferToCloudinary, uploadBuffersToCloudinary } from "../../middleware/cloudinary-upload";
 import { IBlogQuery } from "./blog.interface";
+import { hasPermission } from "../../middleware/permissions";
 
 // Get all blogs
 export const getAllBlogs = async (req: Request, res: Response) => {
@@ -9,7 +10,7 @@ export const getAllBlogs = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const query: IBlogQuery = {
       ...((req as any).validatedQuery || req.query),
-      ...(user?.role === "ADMIN" ? {} : { isPublished: true }),
+      ...(hasPermission(user?.role, "marketing") ? {} : { isPublished: true }),
     };
     const result = await blogService.getAllBlogs(query);
     
@@ -46,7 +47,7 @@ export const getBlogById = async (req: Request, res: Response) => {
       });
     }
 
-    if (!blog.isPublished && (req as any).user?.role !== "ADMIN" && blog.authorId !== (req as any).user?.id) {
+    if (!blog.isPublished && !hasPermission((req as any).user?.role, "marketing") && blog.authorId !== (req as any).user?.id) {
       return res.status(404).json({ success: false, message: "Blog not found", data: null });
     }
     
@@ -174,7 +175,7 @@ export const addBlog = async (req: Request, res: Response) => {
     
     const user = (req as any).user;
     blogData.authorId = user.id;
-    if (user.role !== "ADMIN") blogData.isPublished = false;
+    if (!hasPermission(user.role, "marketing")) blogData.isPublished = false;
 
     const blog = await blogService.createBlog(blogData);
     
@@ -200,7 +201,7 @@ export const updateBlog = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const existingBlog = await blogService.getBlogById(id);
     if (!existingBlog) return res.status(404).json({ success: false, message: "Blog not found", data: null });
-    if (user.role !== "ADMIN" && existingBlog.authorId !== user.id) {
+    if (!hasPermission(user.role, "marketing") && existingBlog.authorId !== user.id) {
       return res.status(403).json({ success: false, message: "You can only update your own blog posts" });
     }
     
@@ -271,7 +272,7 @@ export const updateBlog = async (req: Request, res: Response) => {
       }
     }
 
-    if (user.role !== "ADMIN") updateData.isPublished = false;
+    if (!hasPermission(user.role, "marketing")) updateData.isPublished = false;
     
     const blog = await blogService.updateBlog(id, updateData);
     
@@ -305,7 +306,7 @@ export const deleteBlog = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const blog = await blogService.getBlogById(id);
     if (!blog) return res.status(404).json({ success: false, message: "Blog not found", data: null });
-    if (user.role !== "ADMIN" && blog.authorId !== user.id) {
+    if (!hasPermission(user.role, "marketing") && blog.authorId !== user.id) {
       return res.status(403).json({ success: false, message: "You can only delete your own blog posts" });
     }
     
@@ -341,7 +342,7 @@ export const getBlogsByCategory = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const query: IBlogQuery = {
       ...((req as any).validatedQuery || req.query),
-      ...(user?.role === "ADMIN" ? {} : { isPublished: true }),
+      ...(hasPermission(user?.role, "marketing") ? {} : { isPublished: true }),
     };
     
     const result = await blogService.getBlogsByCategory(categoryId, query);
@@ -367,7 +368,7 @@ export const getBlogsByAuthor = async (req: Request, res: Response) => {
   try {
     const { authorId } = req.params;
     const user = (req as any).user;
-    const canViewDrafts = user?.role === "ADMIN" || user?.id === authorId;
+    const canViewDrafts = hasPermission(user?.role, "marketing") || user?.id === authorId;
     const query: IBlogQuery = {
       ...((req as any).validatedQuery || req.query),
       ...(canViewDrafts ? {} : { isPublished: true }),

@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { authService } from "./auth.service";
+import { prisma } from "../../config/database";
+
+const STAFF_AND_USER_ROLES = ["ADMIN", "EDITOR", "SUPPORT", "MODERATOR", "USER"];
 import { IUserQuery } from "./auth.interface";
 import { uploadBufferToCloudinary, getUploadedFile } from "../../middleware/cloudinary-upload";
 
@@ -543,13 +546,23 @@ export const changeUserRole = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const role = (req.body?.role || "").toUpperCase();
+    const actor = (req as any).user as { id: string; role: string };
 
-    if (!role || !["ADMIN", "USER"].includes(role)) {
+    if (!STAFF_AND_USER_ROLES.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid role. Must be ADMIN or USER",
+        message: "Invalid role. Must be ADMIN, EDITOR, SUPPORT, MODERATOR or USER",
         error: "Invalid role",
       });
+    }
+    // An admin can't lock themselves out, and the store always keeps one admin
+    if (id === actor.id && role !== "ADMIN") {
+      return res.status(400).json({ success: false, message: "You can't change your own role", error: "Self role change" });
+    }
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+    if (!target) return res.status(404).json({ success: false, message: "User not found", error: "Not found" });
+    if (target.role === "ADMIN" && role !== "ADMIN" && (await prisma.user.count({ where: { role: "ADMIN", isTrashed: false } })) <= 1) {
+      return res.status(400).json({ success: false, message: "The store needs at least one admin", error: "Last admin" });
     }
 
     const result = await authService.updateUser(id, { role: role as any });
@@ -557,6 +570,21 @@ export const changeUserRole = async (req: Request, res: Response) => {
     if (!result.success) {
       return res.status(400).json(result);
     }
+
+    // Role changes happen outside /admin, so the audit middleware doesn't see them
+    await prisma.auditLog
+      .create({
+        data: {
+          actorId: actor.id,
+          actorRole: actor.role as any,
+          action: "PATCH /api/v1/auth/users/:id/role",
+          entityType: "users",
+          entityId: id,
+          metadata: { from: target.role, to: role },
+          ip: req.ip ?? null,
+        },
+      })
+      .catch((error) => console.error("Failed to record role change in the audit log:", error));
 
     return res.status(200).json({
       success: true,
