@@ -48,7 +48,13 @@ export const changePasswordSchema = z.object({
 export const updateProfileSchema = z.object({
   name: z.string().max(100, "Name must be less than 100 characters").optional(),
   fullName: z.string().max(100, "Full name must be less than 100 characters").optional(),
-  avatarUrl: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
+  // A short http(s) link only: embedded data: images bloat every response and the session cookie
+  avatarUrl: z
+    .string()
+    .max(2048, "Avatar URL is too long")
+    .regex(/^https?:\/\//, "Avatar must be an http(s) link")
+    .optional()
+    .or(z.literal("")),
   designation: z.string().max(100, "Designation must be less than 100 characters").optional(),
   phone: z.string().max(20, "Phone must be less than 20 characters").optional(),
   address: z.string().max(200, "Address must be less than 200 characters").optional(),

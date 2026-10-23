@@ -14,6 +14,7 @@ import {
   changePassword,
   updateProfile,
   updateAvatarImage,
+  removeAvatarImage,
   getCurrentUser,
   getUserById,
   getAllUsers,
@@ -108,6 +109,7 @@ router.put(
   },
   updateAvatarImage
 );
+router.delete("/auth/profile/avatar", authenticateAndCheckStatus, removeAvatarImage);
 
 router.get("/auth/me", authenticateAndCheckStatus, getCurrentUser);
 

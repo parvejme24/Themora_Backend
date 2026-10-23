@@ -1,3 +1,4 @@
+import { AppError } from "../utils/AppError";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, CLOUDINARY_URL } from "../config/secret";
@@ -200,8 +201,15 @@ export const uploadImageMemory = multer({
 }).single("image");
 
 // Upload a buffer to Cloudinary using upload_stream (with automatic Base64 fallback if Cloudinary credentials fail)
-export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "themora/uploads"): Promise<{ url: string; publicId: string }> => {
+export const uploadBufferToCloudinary = (
+  file: Express.Multer.File,
+  folder = "themora/uploads",
+  // Avatars opt out: a data: URI avatar ends up in every /auth/me response and in the
+  // frontend session cookie (that once broke sign-in with HTTP 431)
+  { allowDataUriFallback = true }: { allowDataUriFallback?: boolean } = {}
+): Promise<{ url: string; publicId: string }> => {
   return new Promise((resolve, reject) => {
+    const unavailable = () => reject(new AppError(503, "Photo uploads are unavailable right now. Please try again later."));
     if (!file || !file.buffer) {
       return reject(new Error("No file buffer provided"));
     }
@@ -216,6 +224,10 @@ export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "th
         },
         (error: any, result: any) => {
           if (error) {
+            if (!allowDataUriFallback) {
+              console.error("❌ Cloudinary upload failed:", error.message || error);
+              return unavailable();
+            }
             console.warn("⚠️ Cloudinary upload failed, using Data URI fallback:", error.message || error);
             // Fallback to data URI so user uploads and edits never fail
             const mimeType = file.mimetype || "image/png";
@@ -230,6 +242,10 @@ export const uploadBufferToCloudinary = (file: Express.Multer.File, folder = "th
       );
       stream.end(file.buffer);
     } catch (err: any) {
+      if (!allowDataUriFallback) {
+        console.error("❌ Cloudinary stream exception:", err.message);
+        return unavailable();
+      }
       console.warn("⚠️ Cloudinary stream exception, using Data URI fallback:", err.message);
       const mimeType = file.mimetype || "image/png";
       const base64 = file.buffer.toString("base64");

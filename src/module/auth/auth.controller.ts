@@ -1,10 +1,22 @@
 import { Request, Response } from "express";
 import { authService } from "./auth.service";
 import { prisma } from "../../config/database";
+import { toSafeUser } from "../../utils/secureToken";
+import { AppError } from "../../utils/AppError";
 
 const STAFF_AND_USER_ROLES = ["ADMIN", "EDITOR", "SUPPORT", "MODERATOR", "USER"];
 import { IUserQuery } from "./auth.interface";
-import { uploadBufferToCloudinary, getUploadedFile } from "../../middleware/cloudinary-upload";
+import { uploadBufferToCloudinary, getUploadedFile, deleteCloudinaryFile, extractPublicId } from "../../middleware/cloudinary-upload";
+
+const currentAvatarUrl = async (userId: string) =>
+  (await prisma.userProfile.findUnique({ where: { userId }, select: { avatarUrl: true } }))?.avatarUrl ?? null;
+
+// Deletes a replaced avatar if we uploaded it; outside links (e.g. Unsplash seed photos) are simply dropped
+const discardOldAvatar = (url: string | null) => {
+  if (!url?.includes("res.cloudinary.com")) return;
+  const publicId = extractPublicId(url);
+  if (publicId?.startsWith("themora/avatars/")) void deleteCloudinaryFile(publicId);
+};
 
 // Register new user
 export const registerUser = async (req: Request, res: Response) => {
@@ -240,7 +252,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     let avatarUrl: string | undefined = req.body?.avatarUrl;
 
     if (file) {
-      const uploaded = await uploadBufferToCloudinary(file, "themora/avatars");
+      const uploaded = await uploadBufferToCloudinary(file, "themora/avatars", { allowDataUriFallback: false });
       avatarUrl = uploaded.url;
     }
 
@@ -257,6 +269,9 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     return res.status(200).json(result);
   } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message, error: error.message });
+    }
     console.error("Error in update profile controller:", error);
     return res.status(500).json({
       success: false,
@@ -288,7 +303,7 @@ export const updateAvatarImage = async (req: Request, res: Response) => {
     }
 
     // Upload buffer to Cloudinary
-    const uploaded = await uploadBufferToCloudinary(file, "themora/avatars");
+    const [uploaded, previousUrl] = await Promise.all([uploadBufferToCloudinary(file, "themora/avatars", { allowDataUriFallback: false }), currentAvatarUrl(userId)]);
     const url = uploaded.url;
 
     const result = await authService.updateProfile(userId, { avatarUrl: url });
@@ -296,6 +311,7 @@ export const updateAvatarImage = async (req: Request, res: Response) => {
     if (!result.success) {
       return res.status(400).json(result);
     }
+    discardOldAvatar(previousUrl);
 
     return res.status(200).json({
       success: true,
@@ -303,7 +319,32 @@ export const updateAvatarImage = async (req: Request, res: Response) => {
       data: result.data,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message, error: error.message });
+    }
     console.error("Error in update avatar controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+// Remove the avatar (back to initials)
+export const removeAvatarImage = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Authentication required", error: "User not authenticated" });
+    }
+    const previousUrl = await currentAvatarUrl(userId);
+    await prisma.userProfile.updateMany({ where: { userId }, data: { avatarUrl: null } });
+    discardOldAvatar(previousUrl);
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
+    return res.status(200).json({ success: true, message: "Avatar removed", data: { user: user && toSafeUser(user) } });
+  } catch (error) {
+    console.error("Error in remove avatar controller:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
