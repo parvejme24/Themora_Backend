@@ -12,13 +12,38 @@ interface CartUser {
   fullName: string;
 }
 
-const getOrCreateCart = (userId: string) =>
-  prisma.cart.upsert({ where: { userId }, create: { userId }, update: {}, select: { id: true, couponCode: true } });
+// A changed cart may get a new reminder later, so the reminder flag resets on every write
+const touchCart = (userId: string) =>
+  prisma.cart.upsert({ where: { userId }, create: { userId }, update: { reminderSentAt: null }, select: { id: true } });
+
+// Products the user already owns, out of `productIds` (licence or completed order)
+const ownedProductIds = async (userId: string, productIds: string[]) => {
+  if (productIds.length === 0) return new Set<string>();
+  const [licenses, orders] = await Promise.all([
+    prisma.license.findMany({ where: { userId, templateId: { in: productIds }, isActive: true }, select: { templateId: true } }),
+    prisma.orderInvoice.findMany({
+      where: {
+        userId,
+        status: "COMPLETED",
+        OR: [{ templateId: { in: productIds } }, { items: { some: { productId: { in: productIds } } } }],
+      },
+      select: { templateId: true, items: { select: { productId: true } } },
+    }),
+  ]);
+  const owned = new Set<string>(licenses.map((license) => license.templateId));
+  for (const order of orders) {
+    if (order.templateId) owned.add(order.templateId);
+    for (const item of order.items) if (item.productId) owned.add(item.productId);
+  }
+  return owned;
+};
 
 export class CartService {
   // Cart with live prices. An invalid saved coupon is reported, not fatal.
   async get(user: CartUser) {
     const cart = await prisma.cart.findUnique({
+      // One SQL query instead of one per relation level (cart → items → product → category / tags)
+      relationLoadStrategy: "join",
       where: { userId: user.id },
       include: { items: { orderBy: { createdAt: "asc" }, include: { product: { select: { ...productCardSelect, status: true } } } } },
     });
@@ -69,19 +94,20 @@ export class CartService {
 
   // Validates and saves one item without re-pricing the cart (callers price it once)
   private async putItem(user: CartUser, productId: string, licenseType: LicenseType) {
-    const product = await prisma.template.findFirst({
-      where: { id: productId, status: "PUBLISHED" },
-      select: { id: true, extendedPrice: true, isFree: true },
-    });
+    const [product, owned] = await Promise.all([
+      prisma.template.findFirst({
+        where: { id: productId, status: "PUBLISHED" },
+        select: { id: true, extendedPrice: true, isFree: true },
+      }),
+      userOwnsProduct(user.id, productId),
+    ]);
     if (!product) throw AppError.notFound("Product not found");
-    if (await userOwnsProduct(user.id, productId)) throw AppError.conflict("You already own this product. Find it in your purchases");
+    if (owned) throw AppError.conflict("You already own this product. Find it in your purchases");
     if (licenseType === "EXTENDED" && (product.extendedPrice == null || product.isFree)) {
       throw AppError.badRequest("This product is not sold with an extended licence");
     }
 
-    const cart = await getOrCreateCart(user.id);
-    // A changed cart may get a new reminder later
-    await prisma.cart.update({ where: { id: cart.id }, data: { reminderSentAt: null } });
+    const cart = await touchCart(user.id);
     await prisma.cartItem.upsert({
       where: { cartId_productId: { cartId: cart.id, productId } },
       create: { cartId: cart.id, productId, licenseType },
@@ -103,15 +129,42 @@ export class CartService {
   // Merges a guest cart (kept in the browser) after sign-in. Items that are
   // unavailable or already owned are skipped silently.
   async merge(user: CartUser, items: { productId: string; licenseType: LicenseType }[]) {
+    const ids = [...new Set(items.map((item) => item.productId))];
+    // Validate the whole guest cart in a few queries instead of a round trip chain per item
+    const [products, owned, cart] = await Promise.all([
+      prisma.template.findMany({
+        where: { id: { in: ids }, status: "PUBLISHED" },
+        select: { id: true, extendedPrice: true, isFree: true },
+      }),
+      ownedProductIds(user.id, ids),
+      touchCart(user.id),
+    ]);
+    const productById = new Map(products.map((product) => [product.id, product]));
+
     const skipped: string[] = [];
+    const accepted = new Map<string, LicenseType>();
     for (const item of items) {
-      try {
-        await this.putItem(user, item.productId, item.licenseType);
-      } catch (error) {
-        if (!(error instanceof AppError)) throw error;
-        skipped.push(item.productId);
-      }
+      const product = productById.get(item.productId);
+      const invalid =
+        !product ||
+        owned.has(item.productId) ||
+        (item.licenseType === "EXTENDED" && (product.extendedPrice == null || product.isFree));
+      if (invalid) skipped.push(item.productId);
+      else accepted.set(item.productId, item.licenseType);
     }
+
+    // Each upsert is one native INSERT … ON CONFLICT; sent in parallel they cost about one round trip
+    // (a wrapping transaction or createMany / updateMany would add several)
+    await Promise.all(
+      [...accepted].map(([productId, licenseType]) =>
+        prisma.cartItem.upsert({
+          where: { cartId_productId: { cartId: cart.id, productId } },
+          create: { cartId: cart.id, productId, licenseType },
+          update: { licenseType },
+          select: { id: true },
+        })
+      )
+    );
     return { ...(await this.get(user)), skipped };
   }
 

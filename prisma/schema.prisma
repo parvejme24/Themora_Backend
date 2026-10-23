@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Lets hot queries load nested relations in one SQL round trip (relationLoadStrategy: "join"); Neon is far away
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
