@@ -332,3 +332,17 @@ describe("order status endpoint", () => {
     expect(JSON.stringify(res.body)).not.toContain("private@themora.test");
   });
 });
+
+describe("payment settings", () => {
+  it("tells the checkout the BDT rate, which gateways are on and whether SSLCommerz is in sandbox", async () => {
+    Object.assign(env, { USD_TO_BDT_RATE: 120, STRIPE_SECRET_KEY: "", SSLCOMMERZ_STORE_ID: "testbox", SSLCOMMERZ_STORE_PASSWORD: "qwerty", SSLCOMMERZ_SANDBOX: true });
+    const res = await request(app).get("/api/v1/payments/config");
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({
+      currency: "USD",
+      usdToBdtRate: 120,
+      gateways: { stripe: { enabled: false }, sslcommerz: { enabled: true, sandbox: true } },
+    });
+    expect(JSON.stringify(res.body)).not.toContain("qwerty");
+  });
+});

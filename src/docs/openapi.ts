@@ -69,6 +69,7 @@ const endpoints: Endpoint[] = [
   { method: "post", path: "/coupons/validate", tag: "Cart", summary: "Preview a coupon on items", access: "public", body: validateCouponSchema },
 
   // Checkout & payments
+  { method: "get", path: "/payments/config", tag: "Checkout", summary: "BDT rate and which gateways are enabled", access: "public" },
   { method: "post", path: "/checkout", tag: "Checkout", summary: "Create an order and a Stripe / SSLCommerz payment session", access: "public", body: checkoutSchema },
   { method: "post", path: "/payments/checkout", tag: "Checkout", summary: "Legacy single-product checkout", access: "public", body: legacyCheckoutSchema },
   { method: "get", path: "/payments/orders/{id}/status", tag: "Checkout", summary: "Order status for success / failed pages", access: "public" },
