@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "seed:marketplace": "ts-node scripts/seed-marketplace.ts",
+    "check:dashboard": "ts-node scripts/check-dashboard-data.ts",
     "db:migrate": "prisma migrate deploy"
   },
   "keywords": [],

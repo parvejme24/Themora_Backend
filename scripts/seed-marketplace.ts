@@ -7,6 +7,7 @@
  *
  * Every demo record is identifiable: buyers use @demo.themora.dev emails,
  * orders use a "seed_" order ID, and products are listed in seed-data/catalog.ts.
+ * The login page's demo accounts get dashboard data from seed-data/demo-accounts.ts.
  * Run --clean before real customers use the store.
  */
 import "dotenv/config";
@@ -21,6 +22,7 @@ import {
   whatsIncludedByType,
 } from "./seed-data/catalog";
 import { reviewPool } from "./seed-data/reviews";
+import { cleanDemoAccounts, seedDemoAccounts } from "./seed-data/demo-accounts";
 
 const prisma = new PrismaClient({ transactionOptions: { maxWait: 10_000, timeout: 60_000 } });
 
@@ -71,6 +73,7 @@ async function recountCategories() {
 }
 
 async function clean() {
+  await cleanDemoAccounts(prisma);
   const orders = await prisma.orderInvoice.deleteMany({ where: { orderNumber: { startsWith: SEED_ORDER_PREFIX } } });
   const users = await prisma.user.deleteMany({ where: { email: { endsWith: `@${DEMO_DOMAIN}` } } });
 
@@ -416,13 +419,11 @@ async function uploadDemoPackage(): Promise<string | null> {
 }
 
 async function seedVersions() {
+  // Without Cloudinary the release history is still created, just without files
   const cloudinaryId = await uploadDemoPackage();
-  if (!cloudinaryId) {
-    console.log("⏭  Skipped versions (Cloudinary not configured)");
-    return;
-  }
   const products = await prisma.template.findMany({
-    where: { slug: { in: seedProducts.map((p) => p.slug) } },
+    // Seed products plus the older demo products (e.g. Zenith) enriched above
+    where: { OR: [{ slug: { in: seedProducts.map((p) => p.slug) } }, { title: { in: Object.keys(existingProductEnrichment) } }] },
     select: { id: true, slug: true, version: true, publishedAt: true },
   });
 
@@ -446,13 +447,13 @@ async function seedVersions() {
           changelog: lines.map((line) => `- ${line}`).join("\n"),
           isLatest,
           releasedAt: new Date(Math.min(start.getTime() + index * 30 * 24 * 60 * 60 * 1000, Date.now() - (releases.length - 1 - index) * 86_400_000)),
-          files: { create: [{ name: `${product.slug}-v${version}.md`, cloudinaryId, size: DEMO_PACKAGE.length }] },
+          ...(cloudinaryId ? { files: { create: [{ name: `${product.slug}-v${version}.md`, cloudinaryId, size: DEMO_PACKAGE.length }] } } : {}),
         },
       });
       created++;
     }
   });
-  console.log(`🗂  Created ${created} product versions (files point to the private demo package)`);
+  console.log(`🗂  Created ${created} product versions${cloudinaryId ? " (files point to the private demo package)" : " without files (Cloudinary not configured)"}`);
 }
 
 // A demo affiliate with clicks, commissions in every state and a paid payout
@@ -585,6 +586,7 @@ async function main() {
     await seedAffiliate();
     await seedAnalytics();
     await seedTickets();
+    await seedDemoAccounts(prisma);
     console.log("✅ Marketplace seed complete");
   }
   console.log(`⏱  ${Math.round((Date.now() - startedAt) / 1000)}s`);
